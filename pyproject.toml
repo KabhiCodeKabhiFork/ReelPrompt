@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reelprompt"
+version = "0.1.0"
+description = "Turn an Instagram reel, X video or YouTube Short into a context pack (prompt + frames + transcript) for Claude Code, Codex, Cursor and other coding agents. CLI + MCP server."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=2,<3",
+    "yt-dlp",
+    "faster-whisper",
+    "av<16",          # faster-whisper 1.2.x breaks on newer PyAV
+    "pillow",
+    "openai",         # default analysis provider (gpt-6-luna)
+]
+
+[project.optional-dependencies]
+anthropic = ["anthropic"]
+dev = ["pytest", "anthropic"]
+
+[project.scripts]
+reelprompt = "reelprompt.cli:main"
+reelprompt-mcp = "reelprompt.mcp_server:main"
+
+[tool.setuptools]
+packages = ["reelprompt"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

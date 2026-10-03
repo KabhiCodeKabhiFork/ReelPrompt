@@ -1,0 +1,74 @@
+import json
+
+import pytest
+
+from reelprompt import pipeline
+from reelprompt.fetch import fetch, is_local_file
+
+
+def test_local_file_detection(sample_video, tmp_path):
+    assert is_local_file(str(sample_video))
+    assert is_local_file(f"file://{sample_video}")
+    assert not is_local_file("https://example.com/x")
+
+
+def test_rejects_unsupported_file(tmp_path):
+    f = tmp_path / "notes.txt"
+    f.write_text("hi")
+    with pytest.raises(ValueError):
+        fetch(str(f), tmp_path)
+
+
+def test_extract_local_video(sample_video, tmp_path):
+    pack = pipeline.extract(str(sample_video), n_frames=5, out_root=tmp_path)
+    assert pack.path.parent == tmp_path
+    assert 1 <= len(pack.frames) <= 5
+    assert all(p.exists() and p.suffix == ".jpg" for _, p in pack.frames)
+    meta = json.loads((pack.path / "meta.json").read_text())
+    assert meta["platform"] == "local file" and meta["duration_s"] > 5
+    assert (pack.path / "transcript.md").exists()
+    assert not list(tmp_path.glob("**/video.*"))  # downloaded/copied video is never kept
+
+
+def test_silent_video_has_no_transcript(silent_video, tmp_path):
+    pack = pipeline.extract(str(silent_video), n_frames=4, out_root=tmp_path)
+    assert pack.transcript == ""
+    assert (pack.path / "transcript.md").read_text() == "(no speech detected)"
+    assert len(pack.frames) >= 1
+
+
+def test_run_with_mock_llm(sample_video, tmp_path, monkeypatch):
+    monkeypatch.setenv("REELPROMPT_PROVIDER", "mock")
+    pack = pipeline.run(str(sample_video), n_frames=3, out_root=tmp_path)
+    assert pack.prompt_path.read_text().startswith("# Mock analysis")
+
+
+def test_missing_api_key_is_a_clear_error(sample_video, tmp_path, monkeypatch):
+    monkeypatch.setenv("REELPROMPT_PROVIDER", "openai")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
+        pipeline.run(str(sample_video), n_frames=2, out_root=tmp_path)
+
+
+def test_env_file_loader(tmp_path, monkeypatch):
+    from reelprompt.config import load_env
+
+    (tmp_path / ".env").write_text("# c\nFOO_RP = bar\nexport BAZ_RP='qux'\nKEEP_RP=new\n")
+    monkeypatch.setenv("REELPROMPT_HOME", str(tmp_path))
+    monkeypatch.delenv("REELPROMPT_NO_DOTENV", raising=False)
+    monkeypatch.setenv("KEEP_RP", "old")
+    monkeypatch.delenv("FOO_RP", raising=False)
+    monkeypatch.delenv("BAZ_RP", raising=False)
+    load_env()
+    import os
+    assert (os.environ["FOO_RP"], os.environ["BAZ_RP"], os.environ["KEEP_RP"]) == ("bar", "qux", "old")
+
+
+def test_provider_is_case_insensitive_and_validated(monkeypatch):
+    from reelprompt import analyze
+
+    monkeypatch.setenv("REELPROMPT_PROVIDER", " OpenAI ")
+    assert analyze.provider() == "openai"
+    monkeypatch.setenv("REELPROMPT_PROVIDER", "gemini")
+    with pytest.raises(ValueError, match="gemini"):
+        analyze.provider()
