@@ -106,9 +106,10 @@ Categories live in [reelprompt/playbooks.py](reelprompt/playbooks.py); adding on
 
 | Tool | What it returns | Who runs the LLM | API key |
 |---|---|---|---|
-| `get_video_context(source, frames=8)` | Caption, timestamped transcript and key frames (as images), plus a category guess and blueprint | **Your coding agent**, on your own plan | **Not needed** |
+| `get_video_context(source, frames=0)` | Caption, timestamped transcript and key frames (as images), plus a category guess and blueprint | **Your coding agent**, on your own plan | **Not needed** |
+| `get_frames_at(source, timestamps)` | Extra frames at moments you pick (seconds or `mm:ss`, up to 8), e.g. something the transcript mentions that the key frames missed | **Your coding agent** | **Not needed** |
 | `get_playbook(category="")` | The blueprint for writing a tailored system prompt for a category (empty = list them) | **Your coding agent** | **Not needed** |
-| `analyze_video(source, frames=8, include_frames=true, category="")` | The same, plus a finished **`PROMPT.md`** (what the video is, core content, seen-vs-assumed, open questions, system prompt, first message) and a standalone **`SYSTEM_PROMPT.md`** | **ReelPrompt itself**, calling OpenAI or Anthropic | **Required.** Only appears when a key is set |
+| `analyze_video(source, frames=0, include_frames=true, category="")` | The same, plus a finished **`PROMPT.md`** (what the video is, core content, seen-vs-assumed, open questions, system prompt, first message) and a standalone **`SYSTEM_PROMPT.md`** | **ReelPrompt itself**, calling OpenAI or Anthropic | **Required.** Only appears when a key is set |
 
 `source` is a video URL (Instagram reel, X/Twitter post with a video, YouTube Short or video) **or an absolute path
 to a video file** on your machine (`.mp4 .mov .mkv .webm .m4v .avi`).
@@ -120,7 +121,7 @@ PROMPT.md         (analyze_video / CLI with a key only)
 SYSTEM_PROMPT.md  the portable system prompt (CLI/analyze_video with a key; the /reel command writes it too)
 transcript.md   timestamped transcript
 meta.json       source, title, author, caption, duration
-frames/         01_00m00s.jpg, 02_00m12s.jpg, ...
+frames/         01_00m00s.jpg, 02_00m12s.jpg, ... (plus at_MMmSSs.jpg from get_frames_at)
 ```
 
 The downloaded video itself is deleted after processing.
@@ -264,7 +265,8 @@ video and build it", `analyze_video` for "write me a spec for this video".
 ```bash
 .venv/bin/reelprompt "https://youtube.com/shorts/abc" --no-llm   # no API key: pack with frames + transcript
 .venv/bin/reelprompt "https://x.com/someone/status/123"          # also writes PROMPT.md (needs a key)
-.venv/bin/reelprompt ~/Movies/screen-recording.mp4 --frames 12
+.venv/bin/reelprompt ~/Movies/screen-recording.mp4 --frames 12   # default: automatic
+.venv/bin/reelprompt "https://youtube.com/watch?v=abc" --at 1:15 3:40       # extra frames at those moments
 .venv/bin/reelprompt "https://x.com/someone/status/123" --category task_scheduling   # skip classification
 ```
 
@@ -298,8 +300,9 @@ REELPROMPT_PROVIDER=openai
   `.venv/bin/pip install -U yt-dlp`. Private or login-gated Instagram posts need `REELPROMPT_COOKIES_BROWSER`.
 - **Videos with no speech** (music over a screen recording) have an empty transcript. The agent relies on the
   frames and caption, which is why frames are included.
-- Frames cost context: returning 8 images uses some of your agent's context and plan usage. Lower it with the
-  `frames` argument if needed.
+- Frames cost context. The default is automatic, about one per 10 seconds of video, between 8 and 16 (so every
+  reel/Short gets 8). Lower it with the `frames` argument, and use `get_frames_at` / `--at` to look closer at a
+  specific moment instead of raising the count.
 - When an LLM writes `PROMPT.md`, it only sees what the frames show. Anything not on screen or in the audio is
   marked as an assumption, so check the *Open questions* section.
 - Transcription runs on CPU. A 40-second clip takes a few seconds with the default model.

@@ -30,15 +30,51 @@ def _delta(a, b) -> float:
     return sum(ImageChops.difference(a, b).tobytes()) / 1024
 
 
+MIN_FRAMES, MAX_FRAMES, SECONDS_PER_FRAME = 8, 16, 10
+
+
+def auto_frame_count(duration: float) -> int:
+    """About one frame per 10s, clamped to 8..16. Reels and Shorts keep 8; longer videos get more."""
+    return max(MIN_FRAMES, min(MAX_FRAMES, round((duration or 0) / SECONDS_PER_FRAME)))
+
+
+def parse_timestamp(value) -> float:
+    """Seconds from 75, '75', '75.5', '1:15' or '0:01:15'. Raises ValueError otherwise."""
+    if isinstance(value, (int, float)):
+        t = float(value)
+    else:
+        try:
+            parts = [float(x) for x in str(value).strip().split(":")]
+        except ValueError:
+            raise ValueError(f"Bad timestamp {value!r}; use seconds or mm:ss") from None
+        if not 1 <= len(parts) <= 3:
+            raise ValueError(f"Bad timestamp {value!r}; use seconds or mm:ss")
+        t = 0.0
+        for part in parts:
+            t = t * 60 + part
+    if t < 0:
+        raise ValueError(f"Bad timestamp {value!r}: negative")
+    return t
+
+
+def frame_at(video: Path, ts: float, dest: Path) -> Path:
+    """Grab one frame at `ts` seconds (clamped to the video end) and write it to `dest`."""
+    ts = max(0.0, min(ts, max(0.0, probe_duration(video) - 0.1)))
+    _run(["ffmpeg", "-y", "-ss", f"{ts:.2f}", "-i", str(video), "-frames:v", "1",
+          "-vf", "scale=768:-2", "-q:v", "3", str(dest)])
+    return dest
+
+
 def pick_frames(video: Path, workdir: Path, n_frames: int, duration: float):
     """Return [(timestamp_s, path)] of up to n_frames representative frames.
 
-    Samples ~60 candidates, then keeps half by biggest visual change (scene cuts, UI changes)
-    and half evenly spaced, so a long static stretch is still represented.
+    Samples a pool of candidates (60, or 6 per wanted frame if that is more), then keeps half by biggest
+    visual change (scene cuts, UI changes) and half evenly spaced, so a long static stretch is still
+    represented.
     """
     cand_dir = workdir / "cand"
     cand_dir.mkdir(exist_ok=True)
-    interval = max(0.5, duration / 60)
+    interval = max(0.5, duration / max(60, n_frames * 6))
     _run(["ffmpeg", "-y", "-i", str(video), "-vf", f"fps=1/{interval},scale=768:-2",
           "-q:v", "3", str(cand_dir / "c_%04d.jpg")])
     files = sorted(cand_dir.glob("c_*.jpg"))

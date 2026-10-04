@@ -13,7 +13,7 @@ from pathlib import Path
 from . import analyze as analyze_mod
 from . import playbooks
 from .fetch import fetch
-from .media import extract_audio, has_audio, pick_frames
+from .media import auto_frame_count, extract_audio, frame_at, has_audio, parse_timestamp, pick_frames
 from .transcribe import format_transcript, transcribe
 
 log = logging.getLogger("reelprompt")
@@ -53,8 +53,9 @@ def _pack_dir(out_root: Path, meta: dict, source: str) -> Path:
     return out_root / f"{slug}_{ident}"
 
 
-def extract(source: str, n_frames: int = 8, out_root: Path | None = None, progress=None) -> Pack:
-    """Fetch the video and write frames/, transcript.md, meta.json. No LLM, no API key needed."""
+def extract(source: str, n_frames: int | None = None, out_root: Path | None = None, progress=None) -> Pack:
+    """Fetch the video and write frames/, transcript.md, meta.json. No LLM, no API key needed.
+    `n_frames` None/0 = automatic: about one per 10s of video, between 8 and 16."""
     progress = progress or (lambda msg: None)
     out_root = Path(out_root) if out_root else default_out_dir()
     timings = {}
@@ -67,6 +68,7 @@ def extract(source: str, n_frames: int = 8, out_root: Path | None = None, progre
 
         t = time.time()
         progress("Selecting key frames")
+        n_frames = max(1, min(n_frames, 32)) if n_frames else auto_frame_count(meta["duration_s"])
         picked = pick_frames(video, work, n_frames, meta["duration_s"])
         timings["frames"] = time.time() - t
 
@@ -98,6 +100,31 @@ def extract(source: str, n_frames: int = 8, out_root: Path | None = None, progre
         shutil.rmtree(work, ignore_errors=True)  # never keep the downloaded video
 
 
+def frames_at(source: str, timestamps: list, out_root: Path | None = None, progress=None) -> tuple:
+    """Grab extra frames at specific moments (seconds or 'mm:ss'), e.g. ones the transcript points to.
+    Re-fetches the video (it is never kept), saves them into the pack's frames/ folder as at_MMmSSs.jpg,
+    and returns (pack_dir, [(filename, Path)]). Max 8 per call."""
+    progress = progress or (lambda msg: None)
+    times = [parse_timestamp(t) for t in timestamps][:8]
+    if not times:
+        raise ValueError("Give at least one timestamp (seconds or mm:ss).")
+    out_root = Path(out_root) if out_root else default_out_dir()
+    work = Path(tempfile.mkdtemp(prefix="reelprompt_"))
+    try:
+        progress("Downloading video")
+        video, meta = fetch(source, work)
+        pack_dir = _pack_dir(out_root, meta, source)
+        (pack_dir / "frames").mkdir(parents=True, exist_ok=True)
+        progress("Selecting key frames")
+        out = []
+        for ts in times:
+            name = f"at_{int(ts // 60):02d}m{int(ts % 60):02d}s.jpg"
+            out.append((name, frame_at(video, ts, pack_dir / "frames" / name)))
+        return pack_dir, out
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def analyze(pack: Pack, progress=None, category: str | None = None) -> Pack:
     """Classify, then run the LLM over an extracted pack. Writes PROMPT.md and SYSTEM_PROMPT.md.
     `category` forces a playbook id and skips the classify call."""
@@ -118,6 +145,6 @@ def analyze(pack: Pack, progress=None, category: str | None = None) -> Pack:
     return pack
 
 
-def run(source: str, n_frames: int = 8, out_root: Path | None = None, progress=None,
+def run(source: str, n_frames: int | None = None, out_root: Path | None = None, progress=None,
         category: str | None = None) -> Pack:
     return analyze(extract(source, n_frames, out_root, progress), progress, category)

@@ -80,3 +80,33 @@ def test_provider_is_case_insensitive_and_validated(monkeypatch):
     monkeypatch.setenv("REELPROMPT_PROVIDER", "gemini")
     with pytest.raises(ValueError, match="gemini"):
         analyze.provider()
+
+
+def test_auto_frame_count_scales_with_duration():
+    from reelprompt.media import auto_frame_count
+    assert [auto_frame_count(d) for d in (0, 30, 80, 130, 400, 3600)] == [8, 8, 8, 13, 16, 16]
+
+
+def test_longer_video_gets_more_frames_by_default(sample_video, long_video, tmp_path):
+    short = pipeline.extract(str(sample_video), out_root=tmp_path / "a")
+    long = pipeline.extract(str(long_video), out_root=tmp_path / "b")
+    assert len(short.frames) <= 8 < len(long.frames) <= 10  # 100s -> 10 frames
+    forced = pipeline.extract(str(long_video), n_frames=5, out_root=tmp_path / "c")
+    assert len(forced.frames) <= 5
+
+
+def test_parse_timestamp():
+    from reelprompt.media import parse_timestamp
+    assert [parse_timestamp(x) for x in (75, "75", "1:15", "0:01:15", "1.5")] == [75, 75, 75, 75, 1.5]
+    for bad in ("abc", "-3", "1:2:3:4"):
+        with pytest.raises(ValueError):
+            parse_timestamp(bad)
+
+
+def test_frames_at(sample_video, tmp_path):
+    folder, got = pipeline.frames_at(str(sample_video), ["1", "0:03", 999], out_root=tmp_path)
+    assert [n for n, _ in got] == ["at_00m01s.jpg", "at_00m03s.jpg", "at_16m39s.jpg"]
+    assert all(p.exists() and p.stat().st_size > 0 for _, p in got)  # 999s is clamped to the last frame
+    assert not list(tmp_path.glob("**/video.*"))
+    with pytest.raises(ValueError):
+        pipeline.frames_at(str(sample_video), [], out_root=tmp_path)

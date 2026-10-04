@@ -23,7 +23,7 @@ def test_lists_tools(tmp_path):
             async with ClientSession(r, w) as s:
                 await s.initialize()
                 return {t.name for t in (await s.list_tools()).tools}
-    assert _run(go) == {"get_video_context", "get_playbook", "analyze_video"}
+    assert _run(go) == {"get_video_context", "get_frames_at", "get_playbook", "analyze_video"}
 
 
 def test_get_video_context_returns_text_and_images(sample_video, tmp_path):
@@ -83,7 +83,7 @@ def test_without_api_key_only_context_tool_is_offered(tmp_path):
             async with ClientSession(r, w) as s:
                 await s.initialize()
                 return {t.name for t in (await s.list_tools()).tools}
-    assert _run(go) == {"get_video_context", "get_playbook"}
+    assert _run(go) == {"get_video_context", "get_frames_at", "get_playbook"}
 
 
 def test_with_api_key_both_tools_are_offered(tmp_path):
@@ -92,4 +92,16 @@ def test_with_api_key_both_tools_are_offered(tmp_path):
             async with ClientSession(r, w) as s:
                 await s.initialize()
                 return {t.name for t in (await s.list_tools()).tools}
-    assert _run(go) == {"get_video_context", "get_playbook", "analyze_video"}
+    assert _run(go) == {"get_video_context", "get_frames_at", "get_playbook", "analyze_video"}
+
+
+def test_get_frames_at_returns_requested_moments(sample_video, tmp_path):
+    async def go():
+        async with stdio_client(_params(tmp_path)) as (r, w):
+            async with ClientSession(r, w) as s:
+                await s.initialize()
+                return await s.call_tool("get_frames_at", {"source": str(sample_video), "timestamps": ["2", "0:04"]})
+    res = _run(go)
+    assert not res.is_error
+    assert [c.type for c in res.content].count("image") == 2
+    assert "at_00m02s.jpg" in res.content[0].text and "at_00m04s.jpg" in res.content[0].text

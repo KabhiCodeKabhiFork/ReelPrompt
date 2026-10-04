@@ -2,6 +2,7 @@
 
   get_video_context  download + frames + transcript + caption + a category suggestion and system-prompt
                      blueprint. No API key; the calling agent is the LLM.
+  get_frames_at      extra frames at chosen timestamps (look closer at a moment).
   get_playbook       the blueprint for any category (software, habits, scheduling, automation, ...).
   analyze_video      same, plus a ready-to-use PROMPT.md written by the configured LLM. Only registered
                      when an API key is configured; otherwise just get_video_context is offered.
@@ -20,7 +21,7 @@ _BASE = (
     "context for doing anything it describes: building an app, following a routine, setting up a schedule or "
     "automation, and so on. When the user shares a video link, call get_video_context and work from the "
     "caption, transcript and frames it returns; it also suggests what kind of thing the video is about and how "
-    "to write a tailored, portable system prompt for it (use get_playbook to switch category). "
+    "to write a tailored, portable system prompt for it (use get_playbook to switch category); get_frames_at grabs extra frames at chosen timestamps. "
     "Only posts that contain a video are supported (not still-image posts)."
 )
 _ANALYZE = (" analyze_video is also available: it has an LLM write a finished PROMPT.md spec; "
@@ -51,6 +52,7 @@ def _summary(pack: pipeline.Pack) -> str:
         f"```json\n{json.dumps(head, indent=2, ensure_ascii=False)}\n```\n\n"
         f"## Caption / description\n{m['description'] or '(none)'}\n\n"
         f"## Transcript\n{pack.transcript or '(no speech detected: rely on the frames and caption)'}\n\n"
+        f"Need a closer look at a moment the transcript mentions? Call get_frames_at(source, [timestamps]).\n\n"
         f"## Classify, then tailor\n"
         f"Decide what this video is about. Keyword guess: **{sug['category']}** "
         f"({sug['confidence']} confidence; scores: {ranked}). It is only a hint: judge from the content "
@@ -64,19 +66,36 @@ def _images(pack: pipeline.Pack):
     return [Image(path=str(p)) for _, p in pack.frames]
 
 
-async def get_video_context(source: str, ctx: Context, frames: int = 8) -> list:
+async def get_video_context(source: str, ctx: Context, frames: int = 0) -> list:
     """Extract everything needed to understand a short video: caption, timestamped transcript and
     key frames (returned as images). Needs no API key. Free to call.
 
     Args:
         source: URL of an Instagram reel, X/Twitter video post, YouTube Short/video, or an absolute
             path to a local video file (.mp4/.mov/.mkv/.webm).
-        frames: number of key frames to return (default 8, max 16).
+        frames: number of key frames to return. 0 (default) = automatic: about one per 10 seconds of
+            video, between 8 and 16. Max 16. To look closer at a moment, use get_frames_at.
     """
     loop = asyncio.get_running_loop()
     pack = await asyncio.to_thread(
-        pipeline.extract, source, max(1, min(frames, 16)), None, _progress_cb(ctx, loop))
+        pipeline.extract, source, min(frames, 16) if frames > 0 else None, None, _progress_cb(ctx, loop))
     return [_summary(pack), *_images(pack)]
+
+
+async def get_frames_at(source: str, timestamps: list[str], ctx: Context) -> list:
+    """Look closer at specific moments of a video: returns one frame per timestamp. Use it when the
+    transcript mentions something on screen (a UI, code, a chart, a recipe step) that the key frames
+    from get_video_context did not capture. Re-downloads the video, so it takes a few seconds.
+    No API key needed.
+
+    Args:
+        source: the same URL or absolute file path given to get_video_context.
+        timestamps: up to 8 moments, as seconds ("75") or mm:ss ("1:15"), e.g. taken from the transcript.
+    """
+    loop = asyncio.get_running_loop()
+    folder, got = await asyncio.to_thread(pipeline.frames_at, source, timestamps, None, _progress_cb(ctx, loop))
+    return [f"Frames saved to `{folder}/frames/`: " + ", ".join(n for n, _ in got),
+            *[Image(path=str(p)) for _, p in got]]
 
 
 async def get_playbook(category: str = "") -> str:
@@ -95,7 +114,7 @@ async def get_playbook(category: str = "") -> str:
     return playbooks.render_blueprint(category)
 
 
-async def analyze_video(source: str, ctx: Context, frames: int = 8, include_frames: bool = True,
+async def analyze_video(source: str, ctx: Context, frames: int = 0, include_frames: bool = True,
                         category: str = "") -> list:
     """Like get_video_context, but also has an LLM classify the video and write a ready-to-use PROMPT.md
     (what the video is, core content, seen-vs-assumed, open questions, a tailored portable system prompt,
@@ -106,13 +125,13 @@ async def analyze_video(source: str, ctx: Context, frames: int = 8, include_fram
     Args:
         source: URL of an Instagram reel, X/Twitter video post, YouTube Short/video, or an absolute
             path to a local video file.
-        frames: number of key frames to analyze (default 8, max 16).
+        frames: number of key frames to analyze (0 = automatic, about one per 10s, 8 to 16; max 16).
         include_frames: also return the frames as images (default true).
         category: force a category id instead of letting the LLM classify the video (optional).
     """
     loop = asyncio.get_running_loop()
     pack = await asyncio.to_thread(
-        pipeline.run, source, max(1, min(frames, 16)), None, _progress_cb(ctx, loop), category or None)
+        pipeline.run, source, min(frames, 16) if frames > 0 else None, None, _progress_cb(ctx, loop), category or None)
     note = (f"\n\n---\nPack saved to `{pack.path}` (PROMPT.md, SYSTEM_PROMPT.md, transcript.md, meta.json, frames/). "
             f"Category: {pack.category}. LLM: {analyze_mod.provider()}/{analyze_mod.model()}, ~${pack.cost:.4f}.")
     return [pack.prompt_md + note, *(_images(pack) if include_frames else [])]
@@ -124,6 +143,7 @@ def create_server() -> MCPServer:
     with_llm = analyze_mod.is_configured()
     server = MCPServer("reelprompt", instructions=_BASE + (_ANALYZE if with_llm else ""))
     server.tool()(get_video_context)
+    server.tool()(get_frames_at)
     server.tool()(get_playbook)
     if with_llm:
         server.tool()(analyze_video)

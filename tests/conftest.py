@@ -22,3 +22,13 @@ def silent_video(tmp_path_factory):
         ["ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x568:rate=24:duration=4",
          "-an", "-pix_fmt", "yuv420p", str(out)], check=True, capture_output=True)
     return out
+
+
+@pytest.fixture(scope="session")
+def long_video(tmp_path_factory):
+    """100s silent clip with changing colours, to check frame counts scale with length."""
+    out = tmp_path_factory.mktemp("media") / "long.mp4"
+    subprocess.run(
+        ["ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x568:rate=10:duration=100",
+         "-vf", "hue=h=t*20", "-an", "-pix_fmt", "yuv420p", str(out)], check=True, capture_output=True)
+    return out

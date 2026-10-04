@@ -1,7 +1,7 @@
 ---
 description: Run the full ReelPrompt flow on a reel / X video / YouTube Short / local video into a tailored system prompt, then start the workflow it describes
 argument-hint: <video URL or absolute path> [extra instructions]
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__reelprompt__get_video_context, mcp__reelprompt__get_playbook, mcp__reelprompt__analyze_video
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__reelprompt__get_video_context, mcp__reelprompt__get_playbook, mcp__reelprompt__get_frames_at, mcp__reelprompt__analyze_video
 ---
 
 Run the entire ReelPrompt flow for: $ARGUMENTS
@@ -13,7 +13,8 @@ If no source was given, ask for one and stop.
 ## 1. Get the context
 
 Prefer the `reelprompt` MCP server if its tools are available:
-- `get_video_context(source, frames=8)` returns the caption, timestamped transcript and key frames. This needs no API key. Use it by default.
+- `get_video_context(source)` returns the caption, timestamped transcript and key frames. This needs no API key. Use it by default.
+- If the transcript refers to something on screen that the frames don't show, call `get_frames_at(source, [timestamps])` for those moments (CLI: `reelprompt "<source>" --at 1:15`).
 - Use `analyze_video` only if the user asked for a written spec / `PROMPT.md` and the tool is offered.
 
 If the MCP tools are not available, fall back to the CLI. Use `reelprompt` if it is on `PATH`, otherwise the `.venv/bin/reelprompt` of your ReelPrompt clone (check `$REELPROMPT_HOME`, or find it with `which reelprompt-mcp` / `claude mcp get reelprompt`):

@@ -13,7 +13,10 @@ def main(argv=None):
         prog="reelprompt",
         description="Turn a reel / X video / YouTube Short / local video into a context pack for a coding agent.")
     ap.add_argument("source", help="video URL or path to a local video file")
-    ap.add_argument("--frames", type=int, default=8, help="number of key frames to keep (default 8)")
+    ap.add_argument("--frames", type=int, default=None,
+                    help="number of key frames to keep (default: automatic, ~1 per 10s, between 8 and 16)")
+    ap.add_argument("--at", nargs="+", metavar="TIME", default=None,
+                    help="only grab extra frames at these moments (seconds or mm:ss) into the pack, then exit")
     ap.add_argument("--out", default=None, help="output folder (default ~/.reelprompt/packs)")
     ap.add_argument("--no-llm", action="store_true",
                     help="only download + frames + transcript; skip PROMPT.md (no API key needed)")
@@ -25,6 +28,10 @@ def main(argv=None):
     logging.basicConfig(level=logging.INFO, format="[reelprompt] %(message)s", stream=sys.stderr)
     say = lambda msg: print(f"[reelprompt] {msg}...", file=sys.stderr, flush=True)  # noqa: E731
     try:
+        if args.at:
+            folder, got = pipeline.frames_at(args.source, args.at, args.out, say)
+            print("\n".join(str(p) for _, p in got))
+            return 0
         pack = pipeline.extract(args.source, args.frames, args.out, say)
         if not args.no_llm:
             pipeline.analyze(pack, say, args.category)
