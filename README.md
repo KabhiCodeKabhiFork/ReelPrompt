@@ -96,6 +96,18 @@ Then, in a session:
 Claude Code calls `get_video_context`, reads the caption, transcript and frames with your own Claude plan, and
 starts building.
 
+#### Optional: the `/reel` slash command
+
+The repo ships a `/reel <url> [extra instructions]` command in `.claude/commands/reel.md`. Inside this repo it
+works as is. To use it from **any** project, copy it to your user commands folder:
+
+```bash
+mkdir -p ~/.claude/commands
+cp /ABS/PATH/reelprompt/.claude/commands/reel.md ~/.claude/commands/
+```
+
+It uses the `reelprompt` MCP server added above, so run that `claude mcp add` step first.
+
 ### Codex (`~/.codex/config.toml`)
 
 ```toml
