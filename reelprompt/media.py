@@ -31,6 +31,7 @@ def _delta(a, b) -> float:
 
 
 MIN_FRAMES, MAX_FRAMES, SECONDS_PER_FRAME = 8, 16, 10
+FRAME_WIDTH = 768  # px; UI mode asks for more so on-screen text stays readable
 
 
 def auto_frame_count(duration: float) -> int:
@@ -57,15 +58,15 @@ def parse_timestamp(value) -> float:
     return t
 
 
-def frame_at(video: Path, ts: float, dest: Path) -> Path:
+def frame_at(video: Path, ts: float, dest: Path, width: int = FRAME_WIDTH) -> Path:
     """Grab one frame at `ts` seconds (clamped to the video end) and write it to `dest`."""
     ts = max(0.0, min(ts, max(0.0, probe_duration(video) - 0.1)))
     _run(["ffmpeg", "-y", "-ss", f"{ts:.2f}", "-i", str(video), "-frames:v", "1",
-          "-vf", "scale=768:-2", "-q:v", "3", str(dest)])
+          "-vf", f"scale={width}:-2", "-q:v", "3", str(dest)])
     return dest
 
 
-def pick_frames(video: Path, workdir: Path, n_frames: int, duration: float):
+def pick_frames(video: Path, workdir: Path, n_frames: int, duration: float, width: int = FRAME_WIDTH):
     """Return [(timestamp_s, path)] of up to n_frames representative frames.
 
     Samples a pool of candidates (60, or 6 per wanted frame if that is more), then keeps half by biggest
@@ -75,7 +76,7 @@ def pick_frames(video: Path, workdir: Path, n_frames: int, duration: float):
     cand_dir = workdir / "cand"
     cand_dir.mkdir(exist_ok=True)
     interval = max(0.5, duration / max(60, n_frames * 6))
-    _run(["ffmpeg", "-y", "-i", str(video), "-vf", f"fps=1/{interval},scale=768:-2",
+    _run(["ffmpeg", "-y", "-i", str(video), "-vf", f"fps=1/{interval},scale={width}:-2",
           "-q:v", "3", str(cand_dir / "c_%04d.jpg")])
     files = sorted(cand_dir.glob("c_*.jpg"))
     if not files:

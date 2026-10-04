@@ -4,7 +4,7 @@ import logging
 import sys
 
 from . import analyze as analyze_mod
-from . import pipeline, playbooks, uiref
+from . import media, pipeline, playbooks, uiref
 from .config import load_env
 
 
@@ -32,13 +32,15 @@ def main(argv=None):
     say = lambda msg: print(f"[reelprompt] {msg}...", file=sys.stderr, flush=True)  # noqa: E731
     try:
         if args.at:
-            folder, got = pipeline.frames_at(args.source, args.at, args.out, say)
+            folder, got = pipeline.frames_at(args.source, args.at, args.out, say,
+                                             uiref.UI_WIDTH if args.ui else media.FRAME_WIDTH)
             print("\n".join(str(p) for _, p in got))
             return 0
         if args.ui:
             args.no_llm = True
             args.frames = args.frames or uiref.UI_FRAMES
-        pack = pipeline.extract(args.source, args.frames, args.out, say)
+        pack = pipeline.extract(args.source, args.frames, args.out, say,
+                                uiref.UI_WIDTH if args.ui else media.FRAME_WIDTH)
         if args.ui:
             uiref.write_brief(pack)
         if not args.no_llm:

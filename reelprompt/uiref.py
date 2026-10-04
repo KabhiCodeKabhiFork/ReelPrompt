@@ -9,6 +9,7 @@ Adapted from the MIT-licensed video-to-ui skill by mmohajer9.
 """
 
 UI_FRAMES = 16  # UI work needs more detail than the automatic 8-16 frames
+UI_WIDTH = 1280  # px; wide enough to read small UI text in a desktop screen recording
 
 BRIEF = """\
 # UI reference mode
@@ -17,9 +18,13 @@ The video shows a UI the user wants to copy. Your job: write a precise, self-con
 implement from without seeing the video, then (if the user wants) implement it in their project.
 
 ## 1. Look closely
-The key frames are a sample. Call get_frames_at(source, [timestamps]) (up to 8 per call, as many calls as needed) \
-for every distinct screen, every state change (hover, pressed, open/closed, loading, empty, error) and the \
+The key frames are a sample. Call get_frames_at(source, [timestamps], width=1280) (up to 8 per call, as many \
+calls as needed; width=1280 keeps small UI text readable) for every distinct screen, every state change (hover, pressed, open/closed, loading, empty, error) and the \
 start/middle/end of each animation. Do not guess at what you have not seen.
+
+The source can also be the user's own screen recording (an absolute path to .mp4/.mov/.webm/.gif, e.g. from \
+Cmd+Shift+5): no caption, usually no audio, so everything comes from the frames. Recordings are often long \
+and mostly static, so sample the transitions: the 16 frames only cover the headline moments.
 
 ## 2. Read the target project first (if any)
 If the user named files/folders or the working directory is a frontend project, read it before writing: stack, \

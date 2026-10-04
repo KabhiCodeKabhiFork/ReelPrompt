@@ -15,7 +15,7 @@ import json
 from mcp.server.mcpserver import Context, Image, MCPServer
 
 from . import analyze as analyze_mod
-from . import pipeline, playbooks, uiref
+from . import media, pipeline, playbooks, uiref
 from .config import load_env
 
 _BASE = (
@@ -88,7 +88,7 @@ async def get_video_context(source: str, ctx: Context, frames: int = 0) -> list:
     return [_summary(pack), *_images(pack)]
 
 
-async def get_frames_at(source: str, timestamps: list[str], ctx: Context) -> list:
+async def get_frames_at(source: str, timestamps: list[str], ctx: Context, width: int = 0) -> list:
     """Look closer at specific moments of a video: returns one frame per timestamp. Use it when the
     transcript mentions something on screen (a UI, code, a chart, a recipe step) that the key frames
     from get_video_context did not capture. Re-downloads the video, so it takes a few seconds.
@@ -97,9 +97,12 @@ async def get_frames_at(source: str, timestamps: list[str], ctx: Context) -> lis
     Args:
         source: the same URL or absolute file path given to get_video_context.
         timestamps: up to 8 moments, as seconds ("75") or mm:ss ("1:15"), e.g. taken from the transcript.
+        width: frame width in pixels. 0 = default (768). Use 1280 when you need to read small on-screen
+            text, as in UI work or desktop screen recordings.
     """
     loop = asyncio.get_running_loop()
-    folder, got = await asyncio.to_thread(pipeline.frames_at, source, timestamps, None, _progress_cb(ctx, loop))
+    folder, got = await asyncio.to_thread(pipeline.frames_at, source, timestamps, None, _progress_cb(ctx, loop),
+        min(width, 1920) if width > 0 else media.FRAME_WIDTH)
     return [f"Frames saved to `{folder}/frames/`: " + ", ".join(n for n, _ in got),
             *[Image(path=str(p)) for _, p in got]]
 
@@ -112,11 +115,11 @@ async def get_ui_reference(source: str, ctx: Context, target: str = "") -> list:
 
     Args:
         source: URL of an Instagram reel, X/Twitter video post, YouTube Short/video, or an absolute path to a
-            local video file (.mp4/.mov/.mkv/.webm).
+            local video file, e.g. the user's own screen recording (.mp4/.mov/.mkv/.webm/.gif).
         target: optional files/folders in the user's project to apply the UI to, or extra instructions.
     """
     loop = asyncio.get_running_loop()
-    pack = await asyncio.to_thread(pipeline.extract, source, uiref.UI_FRAMES, None, _progress_cb(ctx, loop))
+    pack = await asyncio.to_thread(pipeline.extract, source, uiref.UI_FRAMES, None, _progress_cb(ctx, loop), uiref.UI_WIDTH)
     uiref.write_brief(pack)
     return [_summary(pack, blueprint=False) + "\n\n" + uiref.render_brief(target), *_images(pack)]
 

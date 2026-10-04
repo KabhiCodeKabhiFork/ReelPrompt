@@ -117,13 +117,13 @@ Categories live in [reelprompt/playbooks.py](reelprompt/playbooks.py); adding on
 | Tool | What it returns | Who runs the LLM | API key |
 |---|---|---|---|
 | `get_video_context(source, frames=0)` | Caption, timestamped transcript and key frames (as images), plus a category guess and blueprint | **Your coding agent**, on your own plan | **Not needed** |
-| `get_frames_at(source, timestamps)` | Extra frames at moments you pick (seconds or `mm:ss`, up to 8), e.g. something the transcript mentions that the key frames missed | **Your coding agent** | **Not needed** |
+| `get_frames_at(source, timestamps, width=0)` | Extra frames at moments you pick (seconds or `mm:ss`, up to 8), e.g. something the transcript mentions that the key frames missed | **Your coding agent** | **Not needed** |
 | `get_ui_reference(source, target="")` | 16 key frames, caption, transcript and a **brief** for copying a UI: write a `UI_REFERENCE.md` (tokens, screens, components, behavior, motion), then implement it in your project | **Your coding agent** | **Not needed** |
 | `get_playbook(category="")` | The blueprint for writing a tailored system prompt for a category (empty = list them) | **Your coding agent** | **Not needed** |
 | `analyze_video(source, frames=0, include_frames=true, category="")` | The same, plus a finished **`PROMPT.md`** (what the video is, core content, seen-vs-assumed, open questions, system prompt, first message) and a standalone **`SYSTEM_PROMPT.md`** | **ReelPrompt itself**, calling OpenAI or Anthropic | **Required.** Only appears when a key is set |
 
 `source` is a video URL (Instagram reel, X/Twitter post with a video, YouTube Short or video) **or an absolute path
-to a video file** on your machine (`.mp4 .mov .mkv .webm .m4v .avi`).
+to a video file** on your machine, such as a screen recording (`.mp4 .mov .mkv .webm .m4v .avi .gif`).
 
 Every run also saves a pack to `~/.reelprompt/packs/<platform>_<id>/`:
 
@@ -189,18 +189,6 @@ It uses the `reelprompt` MCP server added above, so run that `claude mcp add` st
 `/reel` classifies the video, writes the tailored system prompt to `SYSTEM_PROMPT.md` in the pack folder, shows it
 to you, and then **asks whether to start the workflow** before doing anything. It starts only when you say go.
 
-#### Optional: the `/reel` slash command
-
-The repo ships a `/reel <url> [extra instructions]` command in `.claude/commands/reel.md`. Inside this repo it
-works as is. To use it from **any** project, copy it to your user commands folder:
-
-```bash
-mkdir -p ~/.claude/commands
-cp /ABS/PATH/reelprompt/.claude/commands/reel.md ~/.claude/commands/
-```
-
-It uses the `reelprompt` MCP server added above, so run that `claude mcp add` step first.
-
 ### `/reference-ui`: copy a UI from a video into your project
 
 Saw a UI in a reel, an X post or a screen recording and want it in your own app? `/reference-ui <url-or-path>
@@ -219,6 +207,20 @@ project (shown first, **applied only after you say `apply`**), a standalone Vite
 the reference to paste into any LLM. No API key needed. The design-analysis flow is adapted from the MIT-licensed
 video-to-ui skill by mmohajer9 and runs on ReelPrompt's downloader, so it also works on reels and Shorts, not
 just local recordings.
+
+**Your own screen recordings work too.** UI inspiration isn't only on X and Instagram: record any app or site
+(macOS Cmd+Shift+5, QuickTime, OBS, your phone) and pass the file path:
+
+```
+/reference-ui ~/Desktop/Screen\ Recording\ 2026-10-04\ at\ 10.12.33.mov src/components
+reelprompt ~/Desktop/checkout-flow.mp4 --ui
+```
+
+Paths with quotes, `~`, escaped spaces and macOS's odd "AM/PM" spacing are handled; `.mp4 .mov .mkv .webm .m4v
+.avi .gif` are supported. In UI mode frames are 1280px wide so small text stays readable, and the agent pulls
+extra frames around every transition. A recording has no caption and usually no audio, so the reference comes
+purely from what is on screen, and anything unseen (hover, responsive, exact fonts) is listed as an assumption.
+Tip: a short, focused recording of one flow beats a long wander through the whole app.
 
 Install it like `/reel`: `cp /ABS/PATH/reelprompt/.claude/commands/reference-ui.md ~/.claude/commands/`.
 
