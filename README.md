@@ -1,5 +1,9 @@
 # ReelPrompt
 
+[![Stars](https://img.shields.io/github/stars/KabhiCodeKabhiFork/ReelPrompt?style=flat&logo=github)](https://github.com/KabhiCodeKabhiFork/ReelPrompt/stargazers)
+[![Forks](https://img.shields.io/github/forks/KabhiCodeKabhiFork/ReelPrompt?style=flat&logo=github)](https://github.com/KabhiCodeKabhiFork/ReelPrompt/network/members)
+[![Downloads](https://img.shields.io/github/downloads/KabhiCodeKabhiFork/ReelPrompt/total?style=flat&logo=github)](https://github.com/KabhiCodeKabhiFork/ReelPrompt/releases)
+
 **Turn an Instagram reel, X video or YouTube Short into context, and a tailored system prompt, for whatever it is about.**
 
 You see a video of a cool app, a morning routine, a scheduling method, an automation, a workout, a business idea.
@@ -35,9 +39,15 @@ Set up ReelPrompt on this machine, globally, so I can use it from any project.
 
 1. Check that python3 (3.10+) and ffmpeg are installed. If ffmpeg is missing, install it
    (brew install ffmpeg / apt install ffmpeg) or tell me how.
-2. Clone https://github.com/KabhiCodeKabhiFork/ReelPrompt.git into ~/ReelPrompt (skip if it already exists,
-   run git pull instead). cd into it, then run: python3 -m venv .venv && .venv/bin/pip install -e .
+2. Get the code into ~/ReelPrompt. First ask me: "Fork ReelPrompt to your GitHub account (public, helps the
+   author see usage) or just download it?" Then:
+   - Fork (only if `gh auth status` passes): cd ~ && gh repo fork KabhiCodeKabhiFork/ReelPrompt --clone
+   - Download: mkdir -p ~/ReelPrompt && curl -L https://github.com/KabhiCodeKabhiFork/ReelPrompt/releases/latest/download/ReelPrompt.tar.gz | tar xz -C ~/ReelPrompt
+   - If ~/ReelPrompt already exists, update it instead (git pull for a fork, re-run the download otherwise).
+   cd into it, then run: python3 -m venv .venv && .venv/bin/pip install -e .
    (On Apple Silicon use a native arm64 Python.)
+   When setup is done, ask me if I'd like to star the repo (gh api -X PUT /user/starred/KabhiCodeKabhiFork/ReelPrompt).
+   Only do it if I say yes.
 3. Register the MCP server with whichever of these agents I have installed:
    - Claude Code: claude mcp add --scope user reelprompt -- ~/ReelPrompt/.venv/bin/reelprompt-mcp
      (use the absolute path), then copy ~/ReelPrompt/.claude/commands/reel.md to ~/.claude/commands/

@@ -7,3 +7,6 @@ build/
 .env
 .DS_Store
 out/
+
+# local marketing notes
+pr.md
