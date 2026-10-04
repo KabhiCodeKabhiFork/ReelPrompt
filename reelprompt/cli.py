@@ -4,7 +4,7 @@ import logging
 import sys
 
 from . import analyze as analyze_mod
-from . import pipeline, playbooks
+from . import pipeline, playbooks, uiref
 from .config import load_env
 
 
@@ -22,6 +22,9 @@ def main(argv=None):
                     help="only download + frames + transcript; skip PROMPT.md (no API key needed)")
     ap.add_argument("--category", default=None, choices=playbooks.ids(),
                     help="force what the video is about instead of classifying it (skips the classify call)")
+    ap.add_argument("--ui", action="store_true",
+                    help="UI reference mode: 16 frames, no LLM, and writes UI_REFERENCE_BRIEF.md into the pack "
+                         "(hand the pack to any coding agent to get a UI_REFERENCE.md and an implementation)")
     args = ap.parse_args(argv)
     load_env()
 
@@ -32,7 +35,12 @@ def main(argv=None):
             folder, got = pipeline.frames_at(args.source, args.at, args.out, say)
             print("\n".join(str(p) for _, p in got))
             return 0
+        if args.ui:
+            args.no_llm = True
+            args.frames = args.frames or uiref.UI_FRAMES
         pack = pipeline.extract(args.source, args.frames, args.out, say)
+        if args.ui:
+            uiref.write_brief(pack)
         if not args.no_llm:
             pipeline.analyze(pack, say, args.category)
     except (RuntimeError, ValueError) as e:
@@ -44,7 +52,9 @@ def main(argv=None):
     print(f"source:     {m['platform']} | {m['title']!r} | {m['duration_s']:.0f}s")
     print(f"transcript: {len(pack.transcript.splitlines())} lines, lang={pack.language}")
     print(f"frames:     {len(pack.frames)}")
-    if args.no_llm:
+    if args.ui:
+        print(f"brief:      {pack.path / 'UI_REFERENCE_BRIEF.md'}")
+    elif args.no_llm:
         sug = pack.suggestion
         print(f"category:   {args.category or sug['category']} (keyword guess, {sug['confidence']} confidence)")
     else:

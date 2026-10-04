@@ -3,6 +3,8 @@
   get_video_context  download + frames + transcript + caption + a category suggestion and system-prompt
                      blueprint. No API key; the calling agent is the LLM.
   get_frames_at      extra frames at chosen timestamps (look closer at a moment).
+  get_ui_reference   like get_video_context, tuned for copying a UI: 16 frames plus the UI-reference brief
+                     (tokens, screens, behavior, motion -> UI_REFERENCE.md -> implement in the user's project).
   get_playbook       the blueprint for any category (software, habits, scheduling, automation, ...).
   analyze_video      same, plus a ready-to-use PROMPT.md written by the configured LLM. Only registered
                      when an API key is configured; otherwise just get_video_context is offered.
@@ -13,7 +15,7 @@ import json
 from mcp.server.mcpserver import Context, Image, MCPServer
 
 from . import analyze as analyze_mod
-from . import pipeline, playbooks
+from . import pipeline, playbooks, uiref
 from .config import load_env
 
 _BASE = (
@@ -22,7 +24,7 @@ _BASE = (
     "automation, and so on. When the user shares a video link, call get_video_context and work from the "
     "caption, transcript and frames it returns; it also suggests what kind of thing the video is about and how "
     "to write a tailored, portable system prompt for it (use get_playbook to switch category); get_frames_at grabs extra frames at chosen timestamps. "
-    "Only posts that contain a video are supported (not still-image posts)."
+    "When the user wants to copy, recreate or match a UI shown in a video, call get_ui_reference instead. Only posts that contain a video are supported (not still-image posts)."
 )
 _ANALYZE = (" analyze_video is also available: it has an LLM write a finished PROMPT.md spec; "
             "use it when the user asks for a standalone prompt/spec file.")
@@ -38,7 +40,7 @@ def _progress_cb(ctx: Context, loop):
     return cb
 
 
-def _summary(pack: pipeline.Pack) -> str:
+def _summary(pack: pipeline.Pack, blueprint: bool = True) -> str:
     m = pack.meta
     head = {
         "platform": m["platform"], "title": m["title"], "author": m["uploader"],
@@ -46,13 +48,17 @@ def _summary(pack: pipeline.Pack) -> str:
         "language": pack.language, "pack_folder": str(pack.path),
         "frames": [f"frames/{n}" for n, _ in pack.frames],
     }
-    sug = pack.suggestion or playbooks.classify(m, pack.transcript)
-    ranked = ", ".join(f"{pid} ({score})" for pid, score in sug["ranked"]) or "no keyword matches"
-    return (
+    body = (
         f"```json\n{json.dumps(head, indent=2, ensure_ascii=False)}\n```\n\n"
         f"## Caption / description\n{m['description'] or '(none)'}\n\n"
         f"## Transcript\n{pack.transcript or '(no speech detected: rely on the frames and caption)'}\n\n"
         f"Need a closer look at a moment the transcript mentions? Call get_frames_at(source, [timestamps]).\n\n"
+    )
+    if not blueprint:
+        return body
+    sug = pack.suggestion or playbooks.classify(m, pack.transcript)
+    ranked = ", ".join(f"{pid} ({score})" for pid, score in sug["ranked"]) or "no keyword matches"
+    return body + (
         f"## Classify, then tailor\n"
         f"Decide what this video is about. Keyword guess: **{sug['category']}** "
         f"({sug['confidence']} confidence; scores: {ranked}). It is only a hint: judge from the content "
@@ -96,6 +102,23 @@ async def get_frames_at(source: str, timestamps: list[str], ctx: Context) -> lis
     folder, got = await asyncio.to_thread(pipeline.frames_at, source, timestamps, None, _progress_cb(ctx, loop))
     return [f"Frames saved to `{folder}/frames/`: " + ", ".join(n for n, _ in got),
             *[Image(path=str(p)) for _, p in got]]
+
+
+async def get_ui_reference(source: str, ctx: Context, target: str = "") -> list:
+    """Use when the user wants to copy, recreate or match a UI shown in a video (an app, website, component
+    or animation). Returns the caption, transcript and 16 key frames (as images) plus a brief that tells you
+    how to write a self-contained UI_REFERENCE.md (design tokens, screens, components, behavior, motion) and
+    then implement it in the user's project. Needs no API key; you are the LLM.
+
+    Args:
+        source: URL of an Instagram reel, X/Twitter video post, YouTube Short/video, or an absolute path to a
+            local video file (.mp4/.mov/.mkv/.webm).
+        target: optional files/folders in the user's project to apply the UI to, or extra instructions.
+    """
+    loop = asyncio.get_running_loop()
+    pack = await asyncio.to_thread(pipeline.extract, source, uiref.UI_FRAMES, None, _progress_cb(ctx, loop))
+    uiref.write_brief(pack)
+    return [_summary(pack, blueprint=False) + "\n\n" + uiref.render_brief(target), *_images(pack)]
 
 
 async def get_playbook(category: str = "") -> str:
@@ -144,6 +167,7 @@ def create_server() -> MCPServer:
     server = MCPServer("reelprompt", instructions=_BASE + (_ANALYZE if with_llm else ""))
     server.tool()(get_video_context)
     server.tool()(get_frames_at)
+    server.tool()(get_ui_reference)
     server.tool()(get_playbook)
     if with_llm:
         server.tool()(analyze_video)

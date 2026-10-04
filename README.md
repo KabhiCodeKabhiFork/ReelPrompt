@@ -50,14 +50,14 @@ Set up ReelPrompt on this machine, globally, so I can use it from any project.
    Only do it if I say yes.
 3. Register the MCP server with whichever of these agents I have installed:
    - Claude Code: claude mcp add --scope user reelprompt -- ~/ReelPrompt/.venv/bin/reelprompt-mcp
-     (use the absolute path), then copy ~/ReelPrompt/.claude/commands/reel.md to ~/.claude/commands/
+     (use the absolute path), then copy ~/ReelPrompt/.claude/commands/reel.md and reference-ui.md to ~/.claude/commands/
    - Codex: append this to ~/.codex/config.toml if not already there (absolute path):
      [mcp_servers.reelprompt]
      command = "/ABSOLUTE/PATH/TO/ReelPrompt/.venv/bin/reelprompt-mcp"
-     then copy the folder ~/ReelPrompt/codex/skills/reel to ~/.codex/skills/
+     then copy the folders ~/ReelPrompt/codex/skills/reel and reference-ui to ~/.codex/skills/
    - Cursor / Claude Desktop: add the same command under "mcpServers" in their MCP config.
 4. Verify: run ~/ReelPrompt/.venv/bin/reelprompt --help and confirm the MCP entry exists.
-5. Tell me to restart the agent, and that I can then use /reel <url> in Claude Code or $reel <url> in Codex,
+5. Tell me to restart the agent, and that I can then use /reel <url> or /reference-ui <url> in Claude Code, $reel / $reference-ui in Codex,
    or just paste a reel / X / YouTube Short link and ask it to build what it shows.
 
 Do not set any API key. Do not edit anything else in my config files.
@@ -118,6 +118,7 @@ Categories live in [reelprompt/playbooks.py](reelprompt/playbooks.py); adding on
 |---|---|---|---|
 | `get_video_context(source, frames=0)` | Caption, timestamped transcript and key frames (as images), plus a category guess and blueprint | **Your coding agent**, on your own plan | **Not needed** |
 | `get_frames_at(source, timestamps)` | Extra frames at moments you pick (seconds or `mm:ss`, up to 8), e.g. something the transcript mentions that the key frames missed | **Your coding agent** | **Not needed** |
+| `get_ui_reference(source, target="")` | 16 key frames, caption, transcript and a **brief** for copying a UI: write a `UI_REFERENCE.md` (tokens, screens, components, behavior, motion), then implement it in your project | **Your coding agent** | **Not needed** |
 | `get_playbook(category="")` | The blueprint for writing a tailored system prompt for a category (empty = list them) | **Your coding agent** | **Not needed** |
 | `analyze_video(source, frames=0, include_frames=true, category="")` | The same, plus a finished **`PROMPT.md`** (what the video is, core content, seen-vs-assumed, open questions, system prompt, first message) and a standalone **`SYSTEM_PROMPT.md`** | **ReelPrompt itself**, calling OpenAI or Anthropic | **Required.** Only appears when a key is set |
 
@@ -200,6 +201,27 @@ cp /ABS/PATH/reelprompt/.claude/commands/reel.md ~/.claude/commands/
 
 It uses the `reelprompt` MCP server added above, so run that `claude mcp add` step first.
 
+### `/reference-ui`: copy a UI from a video into your project
+
+Saw a UI in a reel, an X post or a screen recording and want it in your own app? `/reference-ui <url-or-path>
+[target files or folders]` turns the video into implementation context for your coding agent:
+
+```
+/reference-ui https://x.com/someone/status/123 src/components
+```
+
+It calls the `get_ui_reference` tool (also a CLI flag: `reelprompt <url> --ui`), which pulls 16 key frames and a
+brief your agent follows: look closer at every state change and animation, then write a self-contained
+`UI_REFERENCE.md` (design tokens, screen inventory with verbatim copy, component states, interactions, motion,
+and what it could not see, with every fact marked seen / heard / assumed). If you point it at your code, it maps
+the design onto your existing tokens and components by name. Then it asks what you want: a change plan for your
+project (shown first, **applied only after you say `apply`**), a standalone Vite + React + Tailwind app, or just
+the reference to paste into any LLM. No API key needed. The design-analysis flow is adapted from the MIT-licensed
+video-to-ui skill by mmohajer9 and runs on ReelPrompt's downloader, so it also works on reels and Shorts, not
+just local recordings.
+
+Install it like `/reel`: `cp /ABS/PATH/reelprompt/.claude/commands/reference-ui.md ~/.claude/commands/`.
+
 ### Codex (`~/.codex/config.toml`)
 
 ```toml
@@ -212,6 +234,7 @@ Optional `$reel <url>` skill, available in every project:
 ```bash
 mkdir -p ~/.codex/skills
 cp -r /ABS/PATH/reelprompt/codex/skills/reel ~/.codex/skills/
+cp -r /ABS/PATH/reelprompt/codex/skills/reference-ui ~/.codex/skills/   # optional $reference-ui <url>
 ```
 
 ### Cursor (`~/.cursor/mcp.json`) and Claude Desktop (`claude_desktop_config.json`)
@@ -276,6 +299,7 @@ video and build it", `analyze_video` for "write me a spec for this video".
 .venv/bin/reelprompt "https://youtube.com/shorts/abc" --no-llm   # no API key: pack with frames + transcript
 .venv/bin/reelprompt "https://x.com/someone/status/123"          # also writes PROMPT.md (needs a key)
 .venv/bin/reelprompt ~/Movies/screen-recording.mp4 --frames 12   # default: automatic
+.venv/bin/reelprompt ~/Movies/ui-demo.mp4 --ui                   # UI reference mode: 16 frames + UI_REFERENCE_BRIEF.md
 .venv/bin/reelprompt "https://youtube.com/watch?v=abc" --at 1:15 3:40       # extra frames at those moments
 .venv/bin/reelprompt "https://x.com/someone/status/123" --category task_scheduling   # skip classification
 ```
