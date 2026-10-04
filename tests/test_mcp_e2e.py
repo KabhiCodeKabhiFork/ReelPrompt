@@ -23,7 +23,7 @@ def test_lists_tools(tmp_path):
             async with ClientSession(r, w) as s:
                 await s.initialize()
                 return {t.name for t in (await s.list_tools()).tools}
-    assert _run(go) == {"get_video_context", "analyze_video"}
+    assert _run(go) == {"get_video_context", "get_playbook", "analyze_video"}
 
 
 def test_get_video_context_returns_text_and_images(sample_video, tmp_path):
@@ -37,6 +37,22 @@ def test_get_video_context_returns_text_and_images(sample_video, tmp_path):
     kinds = [c.type for c in res.content]
     assert kinds[0] == "text" and "image" in kinds
     assert "pack_folder" in res.content[0].text
+    assert "Classify, then tailor" in res.content[0].text and "Category:" in res.content[0].text
+
+
+def test_get_playbook_tool(tmp_path):
+    async def go():
+        async with stdio_client(_params(tmp_path)) as (r, w):
+            async with ClientSession(r, w) as s:
+                await s.initialize()
+                listing = await s.call_tool("get_playbook", {})
+                one = await s.call_tool("get_playbook", {"category": "task_scheduling"})
+                bad = await s.call_tool("get_playbook", {"category": "nope"})
+                return listing.content[0].text, one.content[0].text, bad.content[0].text
+    listing, one, bad = _run(go)
+    assert "personal_improvement" in listing and "workflow_automation" in listing
+    assert one.startswith("Category: task_scheduling") and "portable" in one
+    assert "Unknown category" in bad
 
 
 def test_analyze_video_returns_prompt(sample_video, tmp_path):
@@ -67,7 +83,7 @@ def test_without_api_key_only_context_tool_is_offered(tmp_path):
             async with ClientSession(r, w) as s:
                 await s.initialize()
                 return {t.name for t in (await s.list_tools()).tools}
-    assert _run(go) == {"get_video_context"}
+    assert _run(go) == {"get_video_context", "get_playbook"}
 
 
 def test_with_api_key_both_tools_are_offered(tmp_path):
@@ -76,4 +92,4 @@ def test_with_api_key_both_tools_are_offered(tmp_path):
             async with ClientSession(r, w) as s:
                 await s.initialize()
                 return {t.name for t in (await s.list_tools()).tools}
-    assert _run(go) == {"get_video_context", "analyze_video"}
+    assert _run(go) == {"get_video_context", "get_playbook", "analyze_video"}

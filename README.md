@@ -1,10 +1,12 @@
 # ReelPrompt
 
-**Turn an Instagram reel, X video or YouTube Short into build context for your coding agent.**
+**Turn an Instagram reel, X video or YouTube Short into context, and a tailored system prompt, for whatever it is about.**
 
-You see a video of a cool UI, app or workflow. You tell Claude Code / Codex / Cursor *"build what's in this reel"*
-and paste the link. ReelPrompt downloads the video, pulls out the caption, transcribes the speech, picks the key
-frames, and hands all of it to your agent, so the agent can see what you saw.
+You see a video of a cool app, a morning routine, a scheduling method, an automation, a workout, a business idea.
+You tell Claude Code / Codex / Cursor *"do what's in this reel"* and paste the link. ReelPrompt downloads the video,
+pulls out the caption, transcribes the speech, picks the key frames, **classifies what the video is about**, and
+hands all of it to your agent with a blueprint for that kind of thing, so the agent can see what you saw and
+set itself up properly for it. It is not limited to code.
 
 It runs **locally on your machine** as an [MCP](https://modelcontextprotocol.io) server (plus a CLI). No hosted
 service, no subscription, no GPU, and **no API key needed**.
@@ -24,6 +26,35 @@ reel / X post / Short / local file
                   └─────────────────────────────────────────────────────┘
 ```
 
+## Quick start: paste one prompt into your coding agent
+
+Open Claude Code or Codex **anywhere** and paste this. The agent does the whole setup on your machine, with no API key:
+
+```text
+Set up ReelPrompt on this machine, globally, so I can use it from any project.
+
+1. Check that python3 (3.10+) and ffmpeg are installed. If ffmpeg is missing, install it
+   (brew install ffmpeg / apt install ffmpeg) or tell me how.
+2. Clone https://github.com/KabhiCodeKabhiFork/ReelPrompt.git into ~/ReelPrompt (skip if it already exists,
+   run git pull instead). cd into it, then run: python3 -m venv .venv && .venv/bin/pip install -e .
+   (On Apple Silicon use a native arm64 Python.)
+3. Register the MCP server with whichever of these agents I have installed:
+   - Claude Code: claude mcp add --scope user reelprompt -- ~/ReelPrompt/.venv/bin/reelprompt-mcp
+     (use the absolute path), then copy ~/ReelPrompt/.claude/commands/reel.md to ~/.claude/commands/
+   - Codex: append this to ~/.codex/config.toml if not already there (absolute path):
+     [mcp_servers.reelprompt]
+     command = "/ABSOLUTE/PATH/TO/ReelPrompt/.venv/bin/reelprompt-mcp"
+     then copy the folder ~/ReelPrompt/codex/skills/reel to ~/.codex/skills/
+   - Cursor / Claude Desktop: add the same command under "mcpServers" in their MCP config.
+4. Verify: run ~/ReelPrompt/.venv/bin/reelprompt --help and confirm the MCP entry exists.
+5. Tell me to restart the agent, and that I can then use /reel <url> in Claude Code or $reel <url> in Codex,
+   or just paste a reel / X / YouTube Short link and ask it to build what it shows.
+
+Do not set any API key. Do not edit anything else in my config files.
+```
+
+The first run downloads a speech model (about 140 MB). Prefer to do it by hand? See [Install](#install) below.
+
 ## Do I need an API key? (No)
 
 **For the normal MCP setup, no key is needed.** Everything the server does itself is free and local:
@@ -39,12 +70,45 @@ finished `PROMPT.md` file. If you don't set a key, that tool simply isn't offere
 > A Claude Pro/Max or ChatGPT subscription is **not** an API key, and the server can't use it for its own calls.
 > API keys are billed separately, per use. That's why the key-free `get_video_context` is the default.
 
-## Two tools
+## What kind of video is it? (the classification layer)
+
+Every video is sorted into one category, and each category has its own blueprint for the **system prompt**
+ReelPrompt emits. The prompt is portable: self-contained, second person, with the video's facts embedded as
+text, so you can paste it into ChatGPT, Claude, Gemini, a custom GPT or a coding agent.
+
+| Category | Typical video | The assistant becomes |
+|---|---|---|
+| `software_build` | an app, UI effect, tool, coding tutorial | a pair-programming engineer with an MVP spec |
+| `personal_improvement` | habits, routines, discipline, mindset | a coach with a routine, tracker and relapse plan |
+| `health_wellness` | workouts, meals, recipes, sleep | a planning assistant with safety guardrails |
+| `task_scheduling` | time blocking, planners, prioritisation | a planner that runs the method on your tasks |
+| `workflow_automation` | no-code/AI automations, SOPs, agent pipelines | a workflow architect that documents and runs the process |
+| `learning_skill` | study systems, language, courses | a tutor with a diagnostic and practice plan |
+| `content_creation` | hooks, growth tactics, editing styles | a content strategist with a repeatable pipeline |
+| `business_growth` | startups, marketing, side hustles | a sceptical operator with a 30-day validation plan |
+| `money_finance` | budgeting, investing, debt | a finance planner (not an adviser) that shows its arithmetic |
+| `creative_project` | art, design, music, DIY | a creative collaborator with a making plan |
+| `research_analysis` | explainers, reviews, "should I..." | an analyst that checks claims and separates evidence from guesses |
+| `general` | anything else | an assistant that first asks what you want to do with it |
+
+How the category gets chosen depends on whether an LLM key is involved:
+
+- **Agent / slash command (no key):** `get_video_context` returns a free keyword guess, the category list and the
+  blueprint. Your agent confirms or overrides the category (`get_playbook(category)` fetches any other blueprint)
+  and writes the system prompt itself.
+- **CLI / `analyze_video` (key):** a cheap text-only call picks the category (falling back to the keyword guess if
+  the reply is unusable), then a second call writes `PROMPT.md` and a standalone `SYSTEM_PROMPT.md` from that
+  category's blueprint. Force one with `--category task_scheduling` (CLI) or the `category` argument.
+
+Categories live in [reelprompt/playbooks.py](reelprompt/playbooks.py); adding one is a single entry.
+
+## Tools
 
 | Tool | What it returns | Who runs the LLM | API key |
 |---|---|---|---|
-| `get_video_context(source, frames=8)` | Caption, timestamped transcript and key frames (as images) | **Your coding agent**, on your own plan | **Not needed** |
-| `analyze_video(source, frames=8, include_frames=true)` | The same, plus a finished **`PROMPT.md`** (what the video is, build brief, seen-vs-assumed, open questions, starter prompt) | **ReelPrompt itself**, calling OpenAI or Anthropic | **Required.** Only appears when a key is set |
+| `get_video_context(source, frames=8)` | Caption, timestamped transcript and key frames (as images), plus a category guess and blueprint | **Your coding agent**, on your own plan | **Not needed** |
+| `get_playbook(category="")` | The blueprint for writing a tailored system prompt for a category (empty = list them) | **Your coding agent** | **Not needed** |
+| `analyze_video(source, frames=8, include_frames=true, category="")` | The same, plus a finished **`PROMPT.md`** (what the video is, core content, seen-vs-assumed, open questions, system prompt, first message) and a standalone **`SYSTEM_PROMPT.md`** | **ReelPrompt itself**, calling OpenAI or Anthropic | **Required.** Only appears when a key is set |
 
 `source` is a video URL (Instagram reel, X/Twitter post with a video, YouTube Short or video) **or an absolute path
 to a video file** on your machine (`.mp4 .mov .mkv .webm .m4v .avi`).
@@ -52,7 +116,8 @@ to a video file** on your machine (`.mp4 .mov .mkv .webm .m4v .avi`).
 Every run also saves a pack to `~/.reelprompt/packs/<platform>_<id>/`:
 
 ```
-PROMPT.md       (analyze_video / CLI with a key only)
+PROMPT.md         (analyze_video / CLI with a key only)
+SYSTEM_PROMPT.md  the portable system prompt (CLI/analyze_video with a key; the /reel command writes it too)
 transcript.md   timestamped transcript
 meta.json       source, title, author, caption, duration
 frames/         01_00m00s.jpg, 02_00m12s.jpg, ...
@@ -94,7 +159,23 @@ Then, in a session:
 > Here's a reel: https://www.instagram.com/reel/XXXX/ . Use reelprompt to look at it and build the UI it shows.
 
 Claude Code calls `get_video_context`, reads the caption, transcript and frames with your own Claude plan, and
-starts building.
+works from them. It is not limited to builds: ask it to "set up the schedule system from this reel" and it
+uses the matching blueprint.
+
+#### Optional: the `/reel` slash command
+
+The repo ships a `/reel <url> [extra instructions]` command in `.claude/commands/reel.md`. Inside this repo it
+works as is. To use it from **any** project, copy it to your user commands folder:
+
+```bash
+mkdir -p ~/.claude/commands
+cp /ABS/PATH/reelprompt/.claude/commands/reel.md ~/.claude/commands/
+```
+
+It uses the `reelprompt` MCP server added above, so run that `claude mcp add` step first.
+
+`/reel` classifies the video, writes the tailored system prompt to `SYSTEM_PROMPT.md` in the pack folder, shows it
+to you, and then **asks whether to start the workflow** before doing anything. It starts only when you say go.
 
 #### Optional: the `/reel` slash command
 
@@ -113,6 +194,13 @@ It uses the `reelprompt` MCP server added above, so run that `claude mcp add` st
 ```toml
 [mcp_servers.reelprompt]
 command = "/ABS/PATH/reelprompt/.venv/bin/reelprompt-mcp"
+```
+
+Optional `$reel <url>` skill, available in every project:
+
+```bash
+mkdir -p ~/.codex/skills
+cp -r /ABS/PATH/reelprompt/codex/skills/reel ~/.codex/skills/
 ```
 
 ### Cursor (`~/.cursor/mcp.json`) and Claude Desktop (`claude_desktop_config.json`)
@@ -177,9 +265,11 @@ video and build it", `analyze_video` for "write me a spec for this video".
 .venv/bin/reelprompt "https://youtube.com/shorts/abc" --no-llm   # no API key: pack with frames + transcript
 .venv/bin/reelprompt "https://x.com/someone/status/123"          # also writes PROMPT.md (needs a key)
 .venv/bin/reelprompt ~/Movies/screen-recording.mp4 --frames 12
+.venv/bin/reelprompt "https://x.com/someone/status/123" --category task_scheduling   # skip classification
 ```
 
-It prints timings and, when an LLM was used, the token cost of the run.
+It prints the category, timings and, when an LLM was used, the token cost of the run. With a key it writes
+`PROMPT.md` and `SYSTEM_PROMPT.md`; the latter is ready to paste anywhere.
 
 ## Configuration
 

@@ -41,6 +41,14 @@ def test_run_with_mock_llm(sample_video, tmp_path, monkeypatch):
     monkeypatch.setenv("REELPROMPT_PROVIDER", "mock")
     pack = pipeline.run(str(sample_video), n_frames=3, out_root=tmp_path)
     assert pack.prompt_path.read_text().startswith("# Mock analysis")
+    assert pack.system_prompt and pack.system_prompt_path.read_text().startswith("Mock system prompt")
+    assert json.loads((pack.path / "meta.json").read_text())["category"] == pack.category
+
+
+def test_run_with_forced_category(sample_video, tmp_path, monkeypatch):
+    monkeypatch.setenv("REELPROMPT_PROVIDER", "mock")
+    pack = pipeline.run(str(sample_video), n_frames=2, out_root=tmp_path, category="task_scheduling")
+    assert pack.category == "task_scheduling" and "task_scheduling" in pack.system_prompt
 
 
 def test_missing_api_key_is_a_clear_error(sample_video, tmp_path, monkeypatch):

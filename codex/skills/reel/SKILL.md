@@ -1,12 +1,11 @@
 ---
-description: Run the full ReelPrompt flow on a reel / X video / YouTube Short / local video into a tailored system prompt, then start the workflow it describes
-argument-hint: <video URL or absolute path> [extra instructions]
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__reelprompt__get_video_context, mcp__reelprompt__get_playbook, mcp__reelprompt__analyze_video
+name: reel
+description: Run the full ReelPrompt flow on a reel, X video, YouTube Short or local video file into a tailored system prompt, then start the workflow it describes. Use when the user gives a video URL or path and wants to act on it: build an app, follow a routine, set up a schedule or automation, or anything else it describes.
 ---
 
-Run the entire ReelPrompt flow for: $ARGUMENTS
+Run the entire ReelPrompt flow for the video the user gave (the text after `$reel`).
 
-The first token of the arguments is the video source (an Instagram reel, X post, YouTube Short/video URL, or an absolute path to a local `.mp4 .mov .mkv .webm .m4v .avi`). Anything after it is extra instructions for what to do with it.
+The first token of the user's message is the video source (an Instagram reel, X post, YouTube Short/video URL, or an absolute path to a local `.mp4 .mov .mkv .webm .m4v .avi`). Anything after it is extra instructions for what to do with it.
 
 If no source was given, ask for one and stop.
 
@@ -16,15 +15,15 @@ Prefer the `reelprompt` MCP server if its tools are available:
 - `get_video_context(source, frames=8)` returns the caption, timestamped transcript and key frames. This needs no API key. Use it by default.
 - Use `analyze_video` only if the user asked for a written spec / `PROMPT.md` and the tool is offered.
 
-If the MCP tools are not available, fall back to the CLI. Use `reelprompt` if it is on `PATH`, otherwise the `.venv/bin/reelprompt` of your ReelPrompt clone (check `$REELPROMPT_HOME`, or find it with `which reelprompt-mcp` / `claude mcp get reelprompt`):
+If the MCP tools are not available, fall back to the CLI. Use `reelprompt` if it is on `PATH`, otherwise the `.venv/bin/reelprompt` of your ReelPrompt clone (check `$REELPROMPT_HOME`, or find it with `which reelprompt-mcp` / `~/.codex/config.toml`):
 
 ```bash
 reelprompt "<source>" --no-llm
 ```
 
-If neither works, tell the user to install ReelPrompt and run `claude mcp add reelprompt -- /ABS/PATH/reelprompt/.venv/bin/reelprompt-mcp` (see the README), then stop.
+If neither works, tell the user to install ReelPrompt and run the `[mcp_servers.reelprompt]` entry from the README in `~/.codex/config.toml` (see the README), then stop.
 
-The CLI saves a pack to `~/.reelprompt/packs/<platform>_<id>/` containing `transcript.md`, `meta.json` and `frames/*.jpg`. Read `meta.json` and `transcript.md`, then view each frame with the Read tool.
+The CLI saves a pack to `~/.reelprompt/packs/<platform>_<id>/` containing `transcript.md`, `meta.json` and `frames/*.jpg`. Read `meta.json` and `transcript.md`, then view each frame by opening each image file.
 
 If the download fails, try `pip install -U yt-dlp` in the ReelPrompt venv once and retry. For login-gated Instagram posts, tell the user to set `REELPROMPT_COOKIES_BROWSER` (chrome, safari or firefox). Do not guess at content you could not fetch.
 
@@ -44,7 +43,7 @@ Following the blueprint for the chosen category, write a **portable system promp
 
 ## 4. Ask before starting
 
-Do **not** start the work yet. Use the AskUserQuestion tool to confirm, with the category you chose and these options: start the workflow now as that assistant (for `software_build`, start building in the current directory), adjust the plan or category first, or stop here with just the system prompt. Anything after the source in the arguments is extra instructions: apply them to the prompt and the plan.
+Do **not** start the work yet. Ask the user directly to confirm, with the category you chose and these options: start the workflow now as that assistant (for `software_build`, start building in the current directory), adjust the plan or category first, or stop here with just the system prompt. Anything after the source in the user's message is extra instructions: apply them to the prompt and the plan.
 
 When the user says go: follow the system prompt you wrote and the answers they gave. Ask its clarifying questions (batched), pick a sensible default and state it when a detail is unseen, and carry out the workflow. For software, build in the current directory; for anything else, produce the deliverable the blueprint names (a routine, schedule, SOP, plan, and so on) as files or in the reply, whichever fits.
 
