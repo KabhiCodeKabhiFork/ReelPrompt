@@ -64,7 +64,7 @@ def fetch(source: str, workdir: Path):
         "merge_output_format": "mp4",
         "quiet": True, "no_warnings": True, "noprogress": True, "noplaylist": True,
     }
-    browser = os.environ.get("REELPROMPT_COOKIES_BROWSER")  # e.g. "chrome"; helps with private/age-gated IG
+    browser = os.environ.get("VIDEO_BRIEF_COOKIES_BROWSER")  # e.g. "chrome"; helps with private/age-gated IG
     if browser:
         opts["cookiesfrombrowser"] = (browser,)
     try:
@@ -73,7 +73,7 @@ def fetch(source: str, workdir: Path):
     except yt_dlp.utils.DownloadError as e:
         raise RuntimeError(
             f"Could not download {source}: {e}. This tool needs a post that contains a video. "
-            "For login-gated Instagram posts set REELPROMPT_COOKIES_BROWSER=chrome (or safari/firefox)."
+            "For login-gated Instagram posts set VIDEO_BRIEF_COOKIES_BROWSER=chrome (or safari/firefox)."
         ) from e
     video = next(workdir.glob("video.*"))
     return video, {

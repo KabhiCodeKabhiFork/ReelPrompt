@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from reelprompt import pipeline
-from reelprompt.fetch import fetch, is_local_file
+from video_brief import pipeline
+from video_brief.fetch import fetch, is_local_file
 
 
 def test_local_file_detection(sample_video, tmp_path):
@@ -38,7 +38,7 @@ def test_silent_video_has_no_transcript(silent_video, tmp_path):
 
 
 def test_run_with_mock_llm(sample_video, tmp_path, monkeypatch):
-    monkeypatch.setenv("REELPROMPT_PROVIDER", "mock")
+    monkeypatch.setenv("VIDEO_BRIEF_PROVIDER", "mock")
     pack = pipeline.run(str(sample_video), n_frames=3, out_root=tmp_path)
     assert pack.prompt_path.read_text().startswith("# Mock analysis")
     assert pack.system_prompt and pack.system_prompt_path.read_text().startswith("Mock system prompt")
@@ -46,24 +46,24 @@ def test_run_with_mock_llm(sample_video, tmp_path, monkeypatch):
 
 
 def test_run_with_forced_category(sample_video, tmp_path, monkeypatch):
-    monkeypatch.setenv("REELPROMPT_PROVIDER", "mock")
+    monkeypatch.setenv("VIDEO_BRIEF_PROVIDER", "mock")
     pack = pipeline.run(str(sample_video), n_frames=2, out_root=tmp_path, category="task_scheduling")
     assert pack.category == "task_scheduling" and "task_scheduling" in pack.system_prompt
 
 
 def test_missing_api_key_is_a_clear_error(sample_video, tmp_path, monkeypatch):
-    monkeypatch.setenv("REELPROMPT_PROVIDER", "openai")
+    monkeypatch.setenv("VIDEO_BRIEF_PROVIDER", "openai")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
         pipeline.run(str(sample_video), n_frames=2, out_root=tmp_path)
 
 
 def test_env_file_loader(tmp_path, monkeypatch):
-    from reelprompt.config import load_env
+    from video_brief.config import load_env
 
     (tmp_path / ".env").write_text("# c\nFOO_RP = bar\nexport BAZ_RP='qux'\nKEEP_RP=new\n")
-    monkeypatch.setenv("REELPROMPT_HOME", str(tmp_path))
-    monkeypatch.delenv("REELPROMPT_NO_DOTENV", raising=False)
+    monkeypatch.setenv("VIDEO_BRIEF_HOME", str(tmp_path))
+    monkeypatch.delenv("VIDEO_BRIEF_NO_DOTENV", raising=False)
     monkeypatch.setenv("KEEP_RP", "old")
     monkeypatch.delenv("FOO_RP", raising=False)
     monkeypatch.delenv("BAZ_RP", raising=False)
@@ -73,17 +73,17 @@ def test_env_file_loader(tmp_path, monkeypatch):
 
 
 def test_provider_is_case_insensitive_and_validated(monkeypatch):
-    from reelprompt import analyze
+    from video_brief import analyze
 
-    monkeypatch.setenv("REELPROMPT_PROVIDER", " OpenAI ")
+    monkeypatch.setenv("VIDEO_BRIEF_PROVIDER", " OpenAI ")
     assert analyze.provider() == "openai"
-    monkeypatch.setenv("REELPROMPT_PROVIDER", "gemini")
+    monkeypatch.setenv("VIDEO_BRIEF_PROVIDER", "gemini")
     with pytest.raises(ValueError, match="gemini"):
         analyze.provider()
 
 
 def test_auto_frame_count_scales_with_duration():
-    from reelprompt.media import auto_frame_count
+    from video_brief.media import auto_frame_count
     assert [auto_frame_count(d) for d in (0, 30, 80, 130, 400, 3600)] == [8, 8, 8, 13, 16, 16]
 
 
@@ -96,7 +96,7 @@ def test_longer_video_gets_more_frames_by_default(sample_video, long_video, tmp_
 
 
 def test_parse_timestamp():
-    from reelprompt.media import parse_timestamp
+    from video_brief.media import parse_timestamp
     assert [parse_timestamp(x) for x in (75, "75", "1:15", "0:01:15", "1.5")] == [75, 75, 75, 75, 1.5]
     for bad in ("abc", "-3", "1:2:3:4"):
         with pytest.raises(ValueError):

@@ -5,26 +5,26 @@ Thanks for helping. This is a small project: keep changes focused and simple.
 ## Setup
 
 ```bash
-git clone https://github.com/<your-username>/reelprompt.git && cd reelprompt
+git clone https://github.com/KabhiCodeKabhiFork/video-brief.git && cd video-brief
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 .venv/bin/python -m pytest
 ```
 
 You need `ffmpeg` on your `PATH`. Tests are offline: they generate videos with ffmpeg, use a mock LLM
-(`REELPROMPT_PROVIDER=mock`) and start the real MCP server over stdio.
+(`VIDEO_BRIEF_PROVIDER=mock`) and start the real MCP server over stdio.
 
 ## Layout
 
 ```
-reelprompt/
+video_brief/
   fetch.py        URL (yt-dlp) or local file -> video on disk + metadata/caption
   media.py        ffmpeg: duration, audio, key-frame selection
   transcribe.py   faster-whisper
   analyze.py      LLM providers + the analysis prompt  <- most quality gains are here
   pipeline.py     extract() -> Pack, analyze(), run()
-  cli.py          `reelprompt`
-  mcp_server.py   `reelprompt-mcp` (tools: get_video_context, analyze_video)
+  cli.py          `video-brief`
+  mcp_server.py   `video-brief-mcp` (tools: get_video_context, analyze_video)
 tests/
 ```
 

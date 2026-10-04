@@ -9,7 +9,7 @@ def transcribe(wav_path, model_name=None):
     global _model
     from faster_whisper import WhisperModel
 
-    name = model_name or os.environ.get("REELPROMPT_WHISPER_MODEL", "base")
+    name = model_name or os.environ.get("VIDEO_BRIEF_WHISPER_MODEL", "base")
     if _model is None or _model[0] != name:
         _model = (name, WhisperModel(name, device="cpu", compute_type="int8"))
     segments, info = _model[1].transcribe(str(wav_path), vad_filter=True)

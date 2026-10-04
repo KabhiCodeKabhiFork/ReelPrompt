@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "reelprompt"
+name = "video-brief"
 version = "0.1.0"
 description = "Turn an Instagram reel, X video or YouTube Short into a context pack (prompt + frames + transcript) for Claude Code, Codex, Cursor and other coding agents. CLI + MCP server."
 readme = "README.md"
@@ -23,11 +23,11 @@ anthropic = ["anthropic"]
 dev = ["pytest", "anthropic"]
 
 [project.scripts]
-reelprompt = "reelprompt.cli:main"
-reelprompt-mcp = "reelprompt.mcp_server:main"
+video-brief = "video_brief.cli:main"
+video-brief-mcp = "video_brief.mcp_server:main"
 
 [tool.setuptools]
-packages = ["reelprompt"]
+packages = ["video_brief"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

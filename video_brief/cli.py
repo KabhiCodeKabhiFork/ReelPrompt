@@ -1,4 +1,4 @@
-"""Command line interface: `reelprompt <url-or-file>`."""
+"""Command line interface: `video-brief <url-or-file>`."""
 import argparse
 import logging
 import sys
@@ -10,14 +10,14 @@ from .config import load_env
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        prog="reelprompt",
+        prog="video-brief",
         description="Turn a reel / X video / YouTube Short / local video into a context pack for a coding agent.")
     ap.add_argument("source", help="video URL or path to a local video file")
     ap.add_argument("--frames", type=int, default=None,
                     help="number of key frames to keep (default: automatic, ~1 per 10s, between 8 and 16)")
     ap.add_argument("--at", nargs="+", metavar="TIME", default=None,
                     help="only grab extra frames at these moments (seconds or mm:ss) into the pack, then exit")
-    ap.add_argument("--out", default=None, help="output folder (default ~/.reelprompt/packs)")
+    ap.add_argument("--out", default=None, help="output folder (default ~/.video-brief/packs)")
     ap.add_argument("--no-llm", action="store_true",
                     help="only download + frames + transcript; skip PROMPT.md (no API key needed)")
     ap.add_argument("--category", default=None, choices=playbooks.ids(),
@@ -28,8 +28,8 @@ def main(argv=None):
     args = ap.parse_args(argv)
     load_env()
 
-    logging.basicConfig(level=logging.INFO, format="[reelprompt] %(message)s", stream=sys.stderr)
-    say = lambda msg: print(f"[reelprompt] {msg}...", file=sys.stderr, flush=True)  # noqa: E731
+    logging.basicConfig(level=logging.INFO, format="[video-brief] %(message)s", stream=sys.stderr)
+    say = lambda msg: print(f"[video-brief] {msg}...", file=sys.stderr, flush=True)  # noqa: E731
     try:
         if args.at:
             folder, got = pipeline.frames_at(args.source, args.at, args.out, say,

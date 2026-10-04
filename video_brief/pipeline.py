@@ -16,11 +16,11 @@ from .fetch import fetch
 from .media import FRAME_WIDTH, auto_frame_count, extract_audio, frame_at, has_audio, parse_timestamp, pick_frames
 from .transcribe import format_transcript, transcribe
 
-log = logging.getLogger("reelprompt")
+log = logging.getLogger("video-brief")
 
 
 def default_out_dir() -> Path:
-    return Path(os.environ.get("REELPROMPT_HOME", "~/.reelprompt")).expanduser() / "packs"
+    return Path(os.environ.get("VIDEO_BRIEF_HOME", "~/.video-brief")).expanduser() / "packs"
 
 
 @dataclass
@@ -60,7 +60,7 @@ def extract(source: str, n_frames: int | None = None, out_root: Path | None = No
     progress = progress or (lambda msg: None)
     out_root = Path(out_root) if out_root else default_out_dir()
     timings = {}
-    work = Path(tempfile.mkdtemp(prefix="reelprompt_"))
+    work = Path(tempfile.mkdtemp(prefix="video_brief_"))
     try:
         t = time.time()
         progress("Downloading video")
@@ -111,7 +111,7 @@ def frames_at(source: str, timestamps: list, out_root: Path | None = None, progr
     if not times:
         raise ValueError("Give at least one timestamp (seconds or mm:ss).")
     out_root = Path(out_root) if out_root else default_out_dir()
-    work = Path(tempfile.mkdtemp(prefix="reelprompt_"))
+    work = Path(tempfile.mkdtemp(prefix="video_brief_"))
     try:
         progress("Downloading video")
         video, meta = fetch(source, work)

@@ -75,9 +75,9 @@ PRICES = {
 
 
 def provider() -> str:
-    p = os.environ.get("REELPROMPT_PROVIDER", "openai").strip().lower()
+    p = os.environ.get("VIDEO_BRIEF_PROVIDER", "openai").strip().lower()
     if p not in ("openai", "anthropic", "mock"):
-        raise ValueError(f"Unknown REELPROMPT_PROVIDER {p!r} (use 'openai' or 'anthropic')")
+        raise ValueError(f"Unknown VIDEO_BRIEF_PROVIDER {p!r} (use 'openai' or 'anthropic')")
     return p
 
 
@@ -92,7 +92,7 @@ def is_configured() -> bool:
 
 def model() -> str:
     default = {"openai": "gpt-6-luna", "anthropic": "claude-haiku-4-5", "mock": "mock"}[provider()]
-    return os.environ.get("REELPROMPT_MODEL", default)
+    return os.environ.get("VIDEO_BRIEF_MODEL", default)
 
 
 def estimate_cost(tok_in: int, tok_out: int) -> float:
@@ -149,7 +149,7 @@ def _complete(prompt, b64, max_out=None):
 
 def _openai(prompt, b64, max_out):
     if not os.environ.get("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is not set (or use REELPROMPT_PROVIDER=anthropic).")
+        raise RuntimeError("OPENAI_API_KEY is not set (or use VIDEO_BRIEF_PROVIDER=anthropic).")
     from openai import OpenAI
 
     content = []
@@ -161,7 +161,7 @@ def _openai(prompt, b64, max_out):
     resp = OpenAI().chat.completions.create(
         model=model(),
         max_completion_tokens=max_out,  # reasoning tokens count against this
-        reasoning_effort=os.environ.get("REELPROMPT_EFFORT", "low"),
+        reasoning_effort=os.environ.get("VIDEO_BRIEF_EFFORT", "low"),
         messages=[{"role": "user", "content": content}],
     )
     return resp.choices[0].message.content or "", resp.usage.prompt_tokens, resp.usage.completion_tokens
@@ -169,7 +169,7 @@ def _openai(prompt, b64, max_out):
 
 def _anthropic(prompt, b64, max_out):
     if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise RuntimeError("ANTHROPIC_API_KEY is not set (or use REELPROMPT_PROVIDER=openai).")
+        raise RuntimeError("ANTHROPIC_API_KEY is not set (or use VIDEO_BRIEF_PROVIDER=openai).")
     import anthropic
 
     content = []

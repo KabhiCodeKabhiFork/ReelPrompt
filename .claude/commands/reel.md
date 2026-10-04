@@ -1,10 +1,10 @@
 ---
-description: Run the full ReelPrompt flow on a reel / X video / YouTube Short / local video into a tailored system prompt, then start the workflow it describes
+description: Run the full video-brief flow on a reel / X video / YouTube Short / local video into a tailored system prompt, then start the workflow it describes
 argument-hint: <video URL or absolute path> [extra instructions]
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__reelprompt__get_video_context, mcp__reelprompt__get_playbook, mcp__reelprompt__get_frames_at, mcp__reelprompt__analyze_video
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, mcp__video-brief__get_video_context, mcp__video-brief__get_playbook, mcp__video-brief__get_frames_at, mcp__video-brief__analyze_video
 ---
 
-Run the entire ReelPrompt flow for: $ARGUMENTS
+Run the entire video-brief flow for: $ARGUMENTS
 
 The first token of the arguments is the video source (an Instagram reel, X post, YouTube Short/video URL, or an absolute path to a local `.mp4 .mov .mkv .webm .m4v .avi`). Anything after it is extra instructions for what to do with it.
 
@@ -12,22 +12,22 @@ If no source was given, ask for one and stop.
 
 ## 1. Get the context
 
-Prefer the `reelprompt` MCP server if its tools are available:
+Prefer the `video-brief` MCP server if its tools are available:
 - `get_video_context(source)` returns the caption, timestamped transcript and key frames. This needs no API key. Use it by default.
-- If the transcript refers to something on screen that the frames don't show, call `get_frames_at(source, [timestamps])` for those moments (CLI: `reelprompt "<source>" --at 1:15`).
+- If the transcript refers to something on screen that the frames don't show, call `get_frames_at(source, [timestamps])` for those moments (CLI: `video-brief "<source>" --at 1:15`).
 - Use `analyze_video` only if the user asked for a written spec / `PROMPT.md` and the tool is offered.
 
-If the MCP tools are not available, fall back to the CLI. Use `reelprompt` if it is on `PATH`, otherwise the `.venv/bin/reelprompt` of your ReelPrompt clone (check `$REELPROMPT_HOME`, or find it with `which reelprompt-mcp` / `claude mcp get reelprompt`):
+If the MCP tools are not available, fall back to the CLI. Use `video-brief` if it is on `PATH`, otherwise the `.venv/bin/video-brief` of your video-brief clone (check `$VIDEO_BRIEF_HOME`, or find it with `which video-brief-mcp` / `claude mcp get video-brief`):
 
 ```bash
-reelprompt "<source>" --no-llm
+video-brief "<source>" --no-llm
 ```
 
-If neither works, tell the user to install ReelPrompt and run `claude mcp add reelprompt -- /ABS/PATH/reelprompt/.venv/bin/reelprompt-mcp` (see the README), then stop.
+If neither works, tell the user to install video-brief and run `claude mcp add video-brief -- /ABS/PATH/video-brief/.venv/bin/video-brief-mcp` (see the README), then stop.
 
-The CLI saves a pack to `~/.reelprompt/packs/<platform>_<id>/` containing `transcript.md`, `meta.json` and `frames/*.jpg`. Read `meta.json` and `transcript.md`, then view each frame with the Read tool.
+The CLI saves a pack to `~/.video-brief/packs/<platform>_<id>/` containing `transcript.md`, `meta.json` and `frames/*.jpg`. Read `meta.json` and `transcript.md`, then view each frame with the Read tool.
 
-If the download fails, try `pip install -U yt-dlp` in the ReelPrompt venv once and retry. For login-gated Instagram posts, tell the user to set `REELPROMPT_COOKIES_BROWSER` (chrome, safari or firefox). Do not guess at content you could not fetch.
+If the download fails, try `pip install -U yt-dlp` in the video-brief venv once and retry. For login-gated Instagram posts, tell the user to set `VIDEO_BRIEF_COOKIES_BROWSER` (chrome, safari or firefox). Do not guess at content you could not fetch.
 
 ## 2. Understand and classify the video
 
@@ -35,7 +35,7 @@ Using the caption, transcript and frames, work out:
 - What the video shows and claims, and what is actually visible on screen vs. only said in the audio
 - What you are assuming because it is not shown. Keep this list explicit.
 
-Then decide **what kind of thing this is**. It does not have to be software. `get_video_context` returns a keyword guess, the category list and a blueprint; use `get_playbook(category)` if you pick a different category. Categories: `software_build`, `personal_improvement`, `health_wellness`, `task_scheduling`, `workflow_automation`, `learning_skill`, `content_creation`, `business_growth`, `money_finance`, `creative_project`, `research_analysis`, `general`. Judge from the content, not just the guess. (If you used the CLI fallback, the guess is in `meta.json` as `suggested_category`, and the full blueprints are in `reelprompt/playbooks.py` of the ReelPrompt clone.)
+Then decide **what kind of thing this is**. It does not have to be software. `get_video_context` returns a keyword guess, the category list and a blueprint; use `get_playbook(category)` if you pick a different category. Categories: `software_build`, `personal_improvement`, `health_wellness`, `task_scheduling`, `workflow_automation`, `learning_skill`, `content_creation`, `business_growth`, `money_finance`, `creative_project`, `research_analysis`, `general`. Judge from the content, not just the guess. (If you used the CLI fallback, the guess is in `meta.json` as `suggested_category`, and the full blueprints are in `video_brief/playbooks.py` of the video-brief clone.)
 
 Videos with no speech have an empty transcript. Rely on the frames and caption in that case.
 
@@ -55,4 +55,4 @@ End with a short summary:
 - What the video showed and the category you chose
 - What was produced and where
 - Assumptions and open questions
-- Where the pack and `SYSTEM_PROMPT.md` were saved (`~/.reelprompt/packs/...`)
+- Where the pack and `SYSTEM_PROMPT.md` were saved (`~/.video-brief/packs/...`)

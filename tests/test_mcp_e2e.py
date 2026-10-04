@@ -9,8 +9,8 @@ from mcp.client.stdio import stdio_client
 
 def _params(tmp_path, provider="mock", **extra):
     import os
-    env = {"REELPROMPT_HOME": str(tmp_path), "REELPROMPT_PROVIDER": provider, "PATH": os.environ["PATH"], "REELPROMPT_NO_DOTENV": "1", **extra}
-    return StdioServerParameters(command=sys.executable, args=["-m", "reelprompt.mcp_server"], env=env)
+    env = {"VIDEO_BRIEF_HOME": str(tmp_path), "VIDEO_BRIEF_PROVIDER": provider, "PATH": os.environ["PATH"], "VIDEO_BRIEF_NO_DOTENV": "1", **extra}
+    return StdioServerParameters(command=sys.executable, args=["-m", "video_brief.mcp_server"], env=env)
 
 
 def _run(coro):

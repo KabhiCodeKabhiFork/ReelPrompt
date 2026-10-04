@@ -1,6 +1,6 @@
 import pytest
 
-from reelprompt import analyze, playbooks
+from video_brief import analyze, playbooks
 
 
 @pytest.mark.parametrize("title,caption,transcript,expected", [
@@ -43,7 +43,7 @@ def test_extract_system_prompt():
 
 
 def test_classify_llm_reply_is_validated(monkeypatch):
-    monkeypatch.setenv("REELPROMPT_PROVIDER", "openai")
+    monkeypatch.setenv("VIDEO_BRIEF_PROVIDER", "openai")
     meta = {"title": "Time blocking", "description": "plan your week with a calendar"}
     replies = iter(['{"category": "learning_skill", "reason": "x"}', '{"category": "bogus"}', "not json"])
     monkeypatch.setattr(analyze, "_complete", lambda *a, **k: (next(replies), 10, 5))

@@ -1,4 +1,4 @@
-from reelprompt import cli, uiref
+from video_brief import cli, uiref
 
 
 def test_brief_includes_target():
@@ -15,7 +15,7 @@ def test_cli_ui_flag_writes_brief_with_many_frames(sample_video, tmp_path):
 def test_screen_recording_paths_are_resolved(sample_video, tmp_path):
     import shutil
 
-    from reelprompt import fetch
+    from video_brief import fetch
     # macOS names the file with a narrow no-break space before AM/PM; users type a normal one
     real = tmp_path / "Screen Recording 2026-10-04 at 10.12.33 AM.mov"
     shutil.copy(sample_video, real)

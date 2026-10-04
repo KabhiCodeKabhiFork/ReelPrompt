@@ -145,7 +145,7 @@ async def analyze_video(source: str, ctx: Context, frames: int = 0, include_fram
     """Like get_video_context, but also has an LLM classify the video and write a ready-to-use PROMPT.md
     (what the video is, core content, seen-vs-assumed, open questions, a tailored portable system prompt,
     first message) and a standalone SYSTEM_PROMPT.md. Requires the
-    server to be configured with OPENAI_API_KEY (or REELPROMPT_PROVIDER=anthropic + ANTHROPIC_API_KEY).
+    server to be configured with OPENAI_API_KEY (or VIDEO_BRIEF_PROVIDER=anthropic + ANTHROPIC_API_KEY).
     Costs a fraction of a cent per video with the default model. The pack is also saved to disk.
 
     Args:
@@ -167,7 +167,7 @@ def create_server() -> MCPServer:
     """Build the server. analyze_video is only registered when the LLM provider has credentials."""
     load_env()
     with_llm = analyze_mod.is_configured()
-    server = MCPServer("reelprompt", instructions=_BASE + (_ANALYZE if with_llm else ""))
+    server = MCPServer("video-brief", instructions=_BASE + (_ANALYZE if with_llm else ""))
     server.tool()(get_video_context)
     server.tool()(get_frames_at)
     server.tool()(get_ui_reference)

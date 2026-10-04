@@ -1,19 +1,16 @@
-# ReelPrompt
+# video-brief
 
-[![Stars](https://img.shields.io/github/stars/KabhiCodeKabhiFork/ReelPrompt?style=flat&logo=github)](https://github.com/KabhiCodeKabhiFork/ReelPrompt/stargazers)
-[![Forks](https://img.shields.io/github/forks/KabhiCodeKabhiFork/ReelPrompt?style=flat&logo=github)](https://github.com/KabhiCodeKabhiFork/ReelPrompt/network/members)
-[![Downloads](https://img.shields.io/github/downloads/KabhiCodeKabhiFork/ReelPrompt/total?style=flat&logo=github)](https://github.com/KabhiCodeKabhiFork/ReelPrompt/releases)
+[![Stars](https://img.shields.io/github/stars/KabhiCodeKabhiFork/video-brief?style=flat&logo=github)](https://github.com/KabhiCodeKabhiFork/video-brief/stargazers)
+[![Forks](https://img.shields.io/github/forks/KabhiCodeKabhiFork/video-brief?style=flat&logo=github)](https://github.com/KabhiCodeKabhiFork/video-brief/network/members)
+[![Downloads](https://img.shields.io/github/downloads/KabhiCodeKabhiFork/video-brief/total?style=flat&logo=github)](https://github.com/KabhiCodeKabhiFork/video-brief/releases)
 
 **Turn an Instagram reel, X video or YouTube Short into context, and a tailored system prompt, for whatever it is about.**
 
-You see a video of a cool app, a morning routine, a scheduling method, an automation, a workout, a business idea.
-You tell Claude Code / Codex / Cursor *"do what's in this reel"* and paste the link. ReelPrompt downloads the video,
-pulls out the caption, transcribes the speech, picks the key frames, **classifies what the video is about**, and
-hands all of it to your agent with a blueprint for that kind of thing, so the agent can see what you saw and
-set itself up properly for it. It is not limited to code.
+Paste a link and say *"do what's in this reel"*. video-brief downloads the video, pulls the caption, transcribes the
+speech, picks key frames, classifies the topic and hands it all to your agent. Not limited to code.
 
-It runs **locally on your machine** as an [MCP](https://modelcontextprotocol.io) server (plus a CLI). No hosted
-service, no subscription, no GPU, and **no API key needed**.
+It runs **locally** as an [MCP](https://modelcontextprotocol.io) server (plus a CLI). No hosted service, no GPU,
+and **no API key needed**: your agent is the LLM.
 
 ```
 reel / X post / Short / local file
@@ -30,330 +27,123 @@ reel / X post / Short / local file
                   └─────────────────────────────────────────────────────┘
 ```
 
-## Quick start: paste one prompt into your coding agent
+## Features
 
-Open Claude Code or Codex **anywhere** and paste this. The agent does the whole setup on your machine, with no API key:
+- **`/reel <url>`**: classify the video, write a portable system prompt, then ask before starting the workflow.
+- **`/reference-ui <url-or-path>`**: copy a UI from a video or your own screen recording into a `UI_REFERENCE.md`
+  (tokens, screens, components, motion), then plan or build it in your project.
+- **12 categories** (software, habits, health, scheduling, automation, learning, content, business, finance,
+  creative, research, general), each with its own blueprint in [video_brief/playbooks.py](video_brief/playbooks.py).
+- **Sources**: Instagram reels, X posts, YouTube Shorts/videos, or a local file (`.mp4 .mov .mkv .webm .m4v .avi .gif`).
+- **Private**: video is deleted after processing; only frames, transcript and caption are kept in
+  `~/.video-brief/packs/<platform>_<id>/`.
+
+## Install
+
+Needs Python 3.10+ and [ffmpeg](https://ffmpeg.org) (`brew install ffmpeg` / `apt install ffmpeg`).
+
+**Easiest: paste this into Claude Code or Codex** and it sets everything up, no key:
 
 ```text
-Set up ReelPrompt on this machine, globally, so I can use it from any project.
+Set up video-brief on this machine, globally, so I can use it from any project.
 
 1. Check that python3 (3.10+) and ffmpeg are installed. If ffmpeg is missing, install it
    (brew install ffmpeg / apt install ffmpeg) or tell me how.
-2. Get the code into ~/ReelPrompt. First ask me: "Fork ReelPrompt to your GitHub account (public, helps the
+2. Get the code into ~/video-brief. First ask me: "Fork video-brief to your GitHub account (public, helps the
    author see usage) or just download it?" Then:
-   - Fork (only if `gh auth status` passes): cd ~ && gh repo fork KabhiCodeKabhiFork/ReelPrompt --clone
-   - Download: mkdir -p ~/ReelPrompt && curl -L https://github.com/KabhiCodeKabhiFork/ReelPrompt/releases/latest/download/ReelPrompt.tar.gz | tar xz -C ~/ReelPrompt
-   - If ~/ReelPrompt already exists, update it instead (git pull for a fork, re-run the download otherwise).
+   - Fork (only if `gh auth status` passes): cd ~ && gh repo fork KabhiCodeKabhiFork/video-brief --clone
+   - Download: mkdir -p ~/video-brief && curl -L https://github.com/KabhiCodeKabhiFork/video-brief/releases/latest/download/video-brief.tar.gz | tar xz -C ~/video-brief
+   - If ~/video-brief already exists, update it instead (git pull for a fork, re-run the download otherwise).
    cd into it, then run: python3 -m venv .venv && .venv/bin/pip install -e .
    (On Apple Silicon use a native arm64 Python.)
-   When setup is done, ask me if I'd like to star the repo (gh api -X PUT /user/starred/KabhiCodeKabhiFork/ReelPrompt).
+   When setup is done, ask me if I'd like to star the repo (gh api -X PUT /user/starred/KabhiCodeKabhiFork/video-brief).
    Only do it if I say yes.
 3. Register the MCP server with whichever of these agents I have installed:
-   - Claude Code: claude mcp add --scope user reelprompt -- ~/ReelPrompt/.venv/bin/reelprompt-mcp
-     (use the absolute path), then copy ~/ReelPrompt/.claude/commands/reel.md and reference-ui.md to ~/.claude/commands/
+   - Claude Code: claude mcp add --scope user video-brief -- ~/video-brief/.venv/bin/video-brief-mcp
+     (use the absolute path), then copy ~/video-brief/.claude/commands/reel.md and reference-ui.md to ~/.claude/commands/
    - Codex: append this to ~/.codex/config.toml if not already there (absolute path):
-     [mcp_servers.reelprompt]
-     command = "/ABSOLUTE/PATH/TO/ReelPrompt/.venv/bin/reelprompt-mcp"
-     then copy the folders ~/ReelPrompt/codex/skills/reel and reference-ui to ~/.codex/skills/
+     [mcp_servers.video-brief]
+     command = "/ABSOLUTE/PATH/TO/video-brief/.venv/bin/video-brief-mcp"
+     then copy the folders ~/video-brief/codex/skills/reel and reference-ui to ~/.codex/skills/
    - Cursor / Claude Desktop: add the same command under "mcpServers" in their MCP config.
-4. Verify: run ~/ReelPrompt/.venv/bin/reelprompt --help and confirm the MCP entry exists.
+4. Verify: run ~/video-brief/.venv/bin/video-brief --help and confirm the MCP entry exists.
 5. Tell me to restart the agent, and that I can then use /reel <url> or /reference-ui <url> in Claude Code, $reel / $reference-ui in Codex,
    or just paste a reel / X / YouTube Short link and ask it to build what it shows.
 
 Do not set any API key. Do not edit anything else in my config files.
 ```
 
-The first run downloads a speech model (about 140 MB). Prefer to do it by hand? See [Install](#install) below.
+**By hand:**
 
-## Do I need an API key? (No)
+```bash
+git clone https://github.com/KabhiCodeKabhiFork/video-brief.git && cd video-brief
+python3 -m venv .venv && .venv/bin/pip install -e .
+```
 
-**For the normal MCP setup, no key is needed.** Everything the server does itself is free and local:
-downloading (yt-dlp), frame extraction (ffmpeg) and transcription (Whisper, running on your CPU).
+The first run downloads a speech model (about 140 MB).
 
-The server does **not** contain or call an LLM in that mode. It returns the caption, transcript and frames
-to your coding agent, and **the agent is the LLM**. It reads them using whatever model and plan you already
-use (your Claude Code subscription, your Codex plan, Cursor, and so on). ReelPrompt adds nothing to your bill.
+## Where it works
 
-An API key is only for one optional extra tool, `analyze_video`, which has *the server* call a model to write a
-finished `PROMPT.md` file. If you don't set a key, that tool simply isn't offered, and nothing breaks.
+Replace `/ABS/PATH/video-brief` with your clone.
 
-> A Claude Pro/Max or ChatGPT subscription is **not** an API key, and the server can't use it for its own calls.
-> API keys are billed separately, per use. That's why the key-free `get_video_context` is the default.
+| Agent | Setup |
+|---|---|
+| **Claude Code** | `claude mcp add --scope user video-brief -- /ABS/PATH/video-brief/.venv/bin/video-brief-mcp`, then `cp .claude/commands/{reel,reference-ui}.md ~/.claude/commands/` for `/reel` and `/reference-ui` |
+| **Codex** | In `~/.codex/config.toml`: `[mcp_servers.video-brief]` with `command = "/ABS/PATH/video-brief/.venv/bin/video-brief-mcp"`. Then `cp -r codex/skills/{reel,reference-ui} ~/.codex/skills/` for `$reel` and `$reference-ui` |
+| **Cursor / Claude Desktop** | Add `{"mcpServers": {"video-brief": {"command": "/ABS/PATH/video-brief/.venv/bin/video-brief-mcp"}}}` to `~/.cursor/mcp.json` / `claude_desktop_config.json` |
 
-## What kind of video is it? (the classification layer)
-
-Every video is sorted into one category, and each category has its own blueprint for the **system prompt**
-ReelPrompt emits. The prompt is portable: self-contained, second person, with the video's facts embedded as
-text, so you can paste it into ChatGPT, Claude, Gemini, a custom GPT or a coding agent.
-
-| Category | Typical video | The assistant becomes |
-|---|---|---|
-| `software_build` | an app, UI effect, tool, coding tutorial | a pair-programming engineer with an MVP spec |
-| `personal_improvement` | habits, routines, discipline, mindset | a coach with a routine, tracker and relapse plan |
-| `health_wellness` | workouts, meals, recipes, sleep | a planning assistant with safety guardrails |
-| `task_scheduling` | time blocking, planners, prioritisation | a planner that runs the method on your tasks |
-| `workflow_automation` | no-code/AI automations, SOPs, agent pipelines | a workflow architect that documents and runs the process |
-| `learning_skill` | study systems, language, courses | a tutor with a diagnostic and practice plan |
-| `content_creation` | hooks, growth tactics, editing styles | a content strategist with a repeatable pipeline |
-| `business_growth` | startups, marketing, side hustles | a sceptical operator with a 30-day validation plan |
-| `money_finance` | budgeting, investing, debt | a finance planner (not an adviser) that shows its arithmetic |
-| `creative_project` | art, design, music, DIY | a creative collaborator with a making plan |
-| `research_analysis` | explainers, reviews, "should I..." | an analyst that checks claims and separates evidence from guesses |
-| `general` | anything else | an assistant that first asks what you want to do with it |
-
-How the category gets chosen depends on whether an LLM key is involved:
-
-- **Agent / slash command (no key):** `get_video_context` returns a free keyword guess, the category list and the
-  blueprint. Your agent confirms or overrides the category (`get_playbook(category)` fetches any other blueprint)
-  and writes the system prompt itself.
-- **CLI / `analyze_video` (key):** a cheap text-only call picks the category (falling back to the keyword guess if
-  the reply is unusable), then a second call writes `PROMPT.md` and a standalone `SYSTEM_PROMPT.md` from that
-  category's blueprint. Force one with `--category task_scheduling` (CLI) or the `category` argument.
-
-Categories live in [reelprompt/playbooks.py](reelprompt/playbooks.py); adding one is a single entry.
+Any MCP stdio client works. Some may not display returned images; caption and transcript still come through.
 
 ## Tools
 
-| Tool | What it returns | Who runs the LLM | API key |
-|---|---|---|---|
-| `get_video_context(source, frames=0)` | Caption, timestamped transcript and key frames (as images), plus a category guess and blueprint | **Your coding agent**, on your own plan | **Not needed** |
-| `get_frames_at(source, timestamps, width=0)` | Extra frames at moments you pick (seconds or `mm:ss`, up to 8), e.g. something the transcript mentions that the key frames missed | **Your coding agent** | **Not needed** |
-| `get_ui_reference(source, target="")` | 16 key frames, caption, transcript and a **brief** for copying a UI: write a `UI_REFERENCE.md` (tokens, screens, components, behavior, motion), then implement it in your project | **Your coding agent** | **Not needed** |
-| `get_playbook(category="")` | The blueprint for writing a tailored system prompt for a category (empty = list them) | **Your coding agent** | **Not needed** |
-| `analyze_video(source, frames=0, include_frames=true, category="")` | The same, plus a finished **`PROMPT.md`** (what the video is, core content, seen-vs-assumed, open questions, system prompt, first message) and a standalone **`SYSTEM_PROMPT.md`** | **ReelPrompt itself**, calling OpenAI or Anthropic | **Required.** Only appears when a key is set |
-
-`source` is a video URL (Instagram reel, X/Twitter post with a video, YouTube Short or video) **or an absolute path
-to a video file** on your machine, such as a screen recording (`.mp4 .mov .mkv .webm .m4v .avi .gif`).
-
-Every run also saves a pack to `~/.reelprompt/packs/<platform>_<id>/`:
-
-```
-PROMPT.md         (analyze_video / CLI with a key only)
-SYSTEM_PROMPT.md  the portable system prompt (CLI/analyze_video with a key; the /reel command writes it too)
-transcript.md   timestamped transcript
-meta.json       source, title, author, caption, duration
-frames/         01_00m00s.jpg, 02_00m12s.jpg, ... (plus at_MMmSSs.jpg from get_frames_at)
-```
-
-The downloaded video itself is deleted after processing.
-
-## Requirements
-
-- Python 3.10+
-- [ffmpeg](https://ffmpeg.org) on your `PATH` (`brew install ffmpeg` / `apt install ffmpeg`)
-
-## Install
-
-```bash
-git clone https://github.com/<your-username>/reelprompt.git
-cd reelprompt
-python3 -m venv .venv
-.venv/bin/pip install -e .
-```
-
-> On Apple Silicon, use a native arm64 Python (Homebrew's `python3`). An Intel/Rosetta Python is slow and some
-> dependencies have no wheels for it.
-
-The first run downloads the Whisper `base` model (about 140 MB) once.
-
-## Add it to your coding agent (no API key)
-
-Replace `/ABS/PATH/reelprompt` with the folder you cloned into.
-
-### Claude Code
-
-```bash
-claude mcp add reelprompt -- /ABS/PATH/reelprompt/.venv/bin/reelprompt-mcp
-```
-
-Then, in a session:
-
-> Here's a reel: https://www.instagram.com/reel/XXXX/ . Use reelprompt to look at it and build the UI it shows.
-
-Claude Code calls `get_video_context`, reads the caption, transcript and frames with your own Claude plan, and
-works from them. It is not limited to builds: ask it to "set up the schedule system from this reel" and it
-uses the matching blueprint.
-
-#### Optional: the `/reel` slash command
-
-The repo ships a `/reel <url> [extra instructions]` command in `.claude/commands/reel.md`. Inside this repo it
-works as is. To use it from **any** project, copy it to your user commands folder:
-
-```bash
-mkdir -p ~/.claude/commands
-cp /ABS/PATH/reelprompt/.claude/commands/reel.md ~/.claude/commands/
-```
-
-It uses the `reelprompt` MCP server added above, so run that `claude mcp add` step first.
-
-`/reel` classifies the video, writes the tailored system prompt to `SYSTEM_PROMPT.md` in the pack folder, shows it
-to you, and then **asks whether to start the workflow** before doing anything. It starts only when you say go.
-
-### `/reference-ui`: copy a UI from a video into your project
-
-Saw a UI in a reel, an X post or a screen recording and want it in your own app? `/reference-ui <url-or-path>
-[target files or folders]` turns the video into implementation context for your coding agent:
-
-```
-/reference-ui https://x.com/someone/status/123 src/components
-```
-
-It calls the `get_ui_reference` tool (also a CLI flag: `reelprompt <url> --ui`), which pulls 16 key frames and a
-brief your agent follows: look closer at every state change and animation, then write a self-contained
-`UI_REFERENCE.md` (design tokens, screen inventory with verbatim copy, component states, interactions, motion,
-and what it could not see, with every fact marked seen / heard / assumed). If you point it at your code, it maps
-the design onto your existing tokens and components by name. Then it asks what you want: a change plan for your
-project (shown first, **applied only after you say `apply`**), a standalone Vite + React + Tailwind app, or just
-the reference to paste into any LLM. No API key needed. The design-analysis flow is adapted from the MIT-licensed
-video-to-ui skill by mmohajer9 and runs on ReelPrompt's downloader, so it also works on reels and Shorts, not
-just local recordings.
-
-**Your own screen recordings work too.** UI inspiration isn't only on X and Instagram: record any app or site
-(macOS Cmd+Shift+5, QuickTime, OBS, your phone) and pass the file path:
-
-```
-/reference-ui ~/Desktop/Screen\ Recording\ 2026-10-04\ at\ 10.12.33.mov src/components
-reelprompt ~/Desktop/checkout-flow.mp4 --ui
-```
-
-Paths with quotes, `~`, escaped spaces and macOS's odd "AM/PM" spacing are handled; `.mp4 .mov .mkv .webm .m4v
-.avi .gif` are supported. In UI mode frames are 1280px wide so small text stays readable, and the agent pulls
-extra frames around every transition. A recording has no caption and usually no audio, so the reference comes
-purely from what is on screen, and anything unseen (hover, responsive, exact fonts) is listed as an assumption.
-Tip: a short, focused recording of one flow beats a long wander through the whole app.
-
-Install it like `/reel`: `cp /ABS/PATH/reelprompt/.claude/commands/reference-ui.md ~/.claude/commands/`.
-
-### Codex (`~/.codex/config.toml`)
-
-```toml
-[mcp_servers.reelprompt]
-command = "/ABS/PATH/reelprompt/.venv/bin/reelprompt-mcp"
-```
-
-Optional `$reel <url>` skill, available in every project:
-
-```bash
-mkdir -p ~/.codex/skills
-cp -r /ABS/PATH/reelprompt/codex/skills/reel ~/.codex/skills/
-cp -r /ABS/PATH/reelprompt/codex/skills/reference-ui ~/.codex/skills/   # optional $reference-ui <url>
-```
-
-### Cursor (`~/.cursor/mcp.json`) and Claude Desktop (`claude_desktop_config.json`)
-
-```json
-{
-  "mcpServers": {
-    "reelprompt": {
-      "command": "/ABS/PATH/reelprompt/.venv/bin/reelprompt-mcp"
-    }
-  }
-}
-```
-
-Anything that speaks MCP over stdio works the same way. Some agents may not display images returned by MCP
-tools. In that case the caption and transcript still come through.
-
-## Optional: let ReelPrompt write `PROMPT.md` itself (needs an API key)
-
-Add a key if you want the `analyze_video` tool: one call that returns a finished spec, written by a model the
-**server** calls (not your agent). You choose which provider with `REELPROMPT_PROVIDER`:
-
-| | **OpenAI (default)** | **Anthropic** |
+| Tool | Returns | API key |
 |---|---|---|
-| `REELPROMPT_PROVIDER` | `openai` | `anthropic` |
-| Model called | **`gpt-6-luna`** (OpenAI Luna) | **`claude-haiku-4-5`** (Claude Haiku) |
-| Key variable | `OPENAI_API_KEY` | `ANTHROPIC_API_KEY` |
-| Extra install | none | `.venv/bin/pip install -e ".[anthropic]"` |
-| Rough cost per video | about $0.0015 | about $0.01 |
-| How well tested | Run end to end on real X and Instagram videos | Supported, but not yet run against the live API |
+| `get_video_context(source, frames=0)` | Caption, timestamped transcript, key frames, category guess and blueprint | No |
+| `get_frames_at(source, timestamps, width=0)` | Extra frames at moments you pick (`mm:ss`, up to 8) | No |
+| `get_ui_reference(source, target="")` | 16 frames plus a brief for writing `UI_REFERENCE.md` | No |
+| `get_playbook(category="")` | Blueprint for a category (empty lists them) | No |
+| `analyze_video(source, frames=0, include_frames=true, category="")` | The above plus a finished `PROMPT.md` and `SYSTEM_PROMPT.md`, written by the server's own LLM call | Yes (OpenAI or Anthropic), only offered when set |
 
-Costs are rough estimates for an 8-frame video and depend on current provider pricing. Both providers' models
-accept images, which `analyze_video` needs. Override the model with `REELPROMPT_MODEL` (for example
-`gpt-5.6-luna` or `claude-sonnet-5-5`).
-
-**With OpenAI Luna (Claude Code):**
+## CLI
 
 ```bash
-claude mcp add reelprompt -e OPENAI_API_KEY=sk-... -- /ABS/PATH/reelprompt/.venv/bin/reelprompt-mcp
+.venv/bin/video-brief "https://youtube.com/shorts/abc" --no-llm            # pack with frames + transcript, no key
+.venv/bin/video-brief "https://x.com/someone/status/123"                   # also writes PROMPT.md (needs a key)
+.venv/bin/video-brief ~/Movies/ui-demo.mp4 --ui                            # UI reference mode
+.venv/bin/video-brief "https://youtube.com/watch?v=abc" --at 1:15 3:40     # extra frames at those moments
+.venv/bin/video-brief "https://x.com/someone/status/123" --category task_scheduling
 ```
 
-**With Claude Haiku (Claude Code):**
+## Optional: API key for `analyze_video`
 
-```bash
-.venv/bin/pip install -e ".[anthropic]"
-claude mcp add reelprompt -e REELPROMPT_PROVIDER=anthropic -e ANTHROPIC_API_KEY=sk-ant-... \
-  -- /ABS/PATH/reelprompt/.venv/bin/reelprompt-mcp
-```
-
-For Codex, add the same variables under the server entry (`env = { OPENAI_API_KEY = "sk-..." }`). For Cursor and
-Claude Desktop, add an `"env": { ... }` object next to `"command"`.
-
-Or skip the `-e` flags and put the variables in a `.env` file, see [Configuration](#configuration). Restart your
-agent after changing keys, because the tool list is read when the server starts.
-
-With a key set, the agent sees both tools and picks the one that fits: `get_video_context` for "look at this
-video and build it", `analyze_video` for "write me a spec for this video".
-
-## Use it as a CLI
-
-```bash
-.venv/bin/reelprompt "https://youtube.com/shorts/abc" --no-llm   # no API key: pack with frames + transcript
-.venv/bin/reelprompt "https://x.com/someone/status/123"          # also writes PROMPT.md (needs a key)
-.venv/bin/reelprompt ~/Movies/screen-recording.mp4 --frames 12   # default: automatic
-.venv/bin/reelprompt ~/Movies/ui-demo.mp4 --ui                   # UI reference mode: 16 frames + UI_REFERENCE_BRIEF.md
-.venv/bin/reelprompt "https://youtube.com/watch?v=abc" --at 1:15 3:40       # extra frames at those moments
-.venv/bin/reelprompt "https://x.com/someone/status/123" --category task_scheduling   # skip classification
-```
-
-It prints the category, timings and, when an LLM was used, the token cost of the run. With a key it writes
-`PROMPT.md` and `SYSTEM_PROMPT.md`; the latter is ready to paste anywhere.
-
-## Configuration
-
-Instead of exporting variables, you can put them in a `.env` file: either `~/.reelprompt/.env` or a `.env` in the
-repo folder (git-ignored). Variables already set in your environment win. Example:
-
-```
-OPENAI_API_KEY=sk-...
-REELPROMPT_PROVIDER=openai
-```
+Set `OPENAI_API_KEY` (default, model `gpt-6-luna`) or `VIDEO_BRIEF_PROVIDER=anthropic` with `ANTHROPIC_API_KEY`
+(model `claude-haiku-4-5`; needs `pip install -e ".[anthropic]"`). Put them in `~/.video-brief/.env` or pass
+`-e KEY=...` to `claude mcp add`. A Claude/ChatGPT subscription is not an API key. Restart your agent after changing keys.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `REELPROMPT_PROVIDER` | `openai` | `openai` (Luna) or `anthropic` (Haiku), only used by `analyze_video` / the CLI's `PROMPT.md` |
-| `REELPROMPT_MODEL` | `gpt-6-luna` / `claude-haiku-4-5` | Analysis model; any vision-capable model works |
-| `REELPROMPT_EFFORT` | `low` | OpenAI `reasoning_effort` |
-| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | unset | Credentials for the chosen provider. Without one, `analyze_video` is not offered |
-| `REELPROMPT_WHISPER_MODEL` | `base` | faster-whisper model: `tiny`, `base`, `small`, ... (bigger = slower, more accurate) |
-| `REELPROMPT_COOKIES_BROWSER` | unset | `chrome`, `safari`, `firefox`: use that browser's login for gated Instagram posts |
-| `REELPROMPT_HOME` | `~/.reelprompt` | Where packs and the optional `.env` live |
+| `VIDEO_BRIEF_PROVIDER` | `openai` | `openai` or `anthropic` |
+| `VIDEO_BRIEF_MODEL` | provider default | Any vision-capable model |
+| `VIDEO_BRIEF_WHISPER_MODEL` | `base` | `tiny`, `base`, `small`, ... |
+| `VIDEO_BRIEF_COOKIES_BROWSER` | unset | `chrome`, `safari`, `firefox`, for login-gated Instagram posts |
+| `VIDEO_BRIEF_HOME` | `~/.video-brief` | Packs and `.env` location |
 
 ## Limitations
 
-- **Video posts only.** Still-image posts and photo carousels are not supported yet.
-- **Platform downloads break sometimes.** Instagram and X change often. Update the downloader first:
-  `.venv/bin/pip install -U yt-dlp`. Private or login-gated Instagram posts need `REELPROMPT_COOKIES_BROWSER`.
-- **Videos with no speech** (music over a screen recording) have an empty transcript. The agent relies on the
-  frames and caption, which is why frames are included.
-- Frames cost context. The default is automatic, about one per 10 seconds of video, between 8 and 16 (so every
-  reel/Short gets 8). Lower it with the `frames` argument, and use `get_frames_at` / `--at` to look closer at a
-  specific moment instead of raising the count.
-- When an LLM writes `PROMPT.md`, it only sees what the frames show. Anything not on screen or in the audio is
-  marked as an assumption, so check the *Open questions* section.
-- Transcription runs on CPU. A 40-second clip takes a few seconds with the default model.
+- Video posts only; no image carousels.
+- Platform downloads break sometimes: `.venv/bin/pip install -U yt-dlp`.
+- No speech means an empty transcript; the agent relies on frames and caption.
+- Frames cost context (auto: 8 to 16). Use `get_frames_at` / `--at` rather than raising the count.
 
 ## Responsible use
 
-ReelPrompt is meant for **personal use**: understanding a video you can already watch. It downloads at low
-quality to a temporary folder, deletes the video afterwards and keeps only frames, a transcript and the caption.
-Respect each platform's terms and the original creator's rights, and don't use it to redistribute content.
+For personal use: understanding a video you can already watch. Respect platform terms and creators' rights; don't
+redistribute content.
 
 ## Development
 
 ```bash
-.venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m pytest        # offline: local videos, MCP server over stdio, mock LLM
+.venv/bin/pip install -e ".[dev]" && .venv/bin/python -m pytest
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). MIT licensed.
